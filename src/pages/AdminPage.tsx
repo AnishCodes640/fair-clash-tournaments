@@ -58,18 +58,6 @@ const AdminPage = () => {
   // Kill switch
   const [features, setFeatures] = useState<any>({});
 
-  if (!isAdmin) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-6 animate-fade-in">
-        <div className="surface-card rounded-lg p-8 text-center">
-          <Shield className="h-8 w-8 text-destructive mx-auto mb-4" />
-          <h2 className="text-lg font-semibold mb-2">Access Denied</h2>
-          <p className="text-sm text-muted-foreground">You do not have admin privileges.</p>
-        </div>
-      </div>
-    );
-  }
-
   const loadDashboard = async () => {
     const [profilesRes, gamesRes, tournamentsRes, paymentsRes] = await Promise.all([
       supabase.from("profiles").select("*"),
