@@ -14,16 +14,334 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      games: {
+        Row: {
+          bot_difficulty: string | null
+          bot_enabled: boolean
+          bot_win_probability: number | null
+          created_at: string
+          description: string | null
+          game_file_url: string | null
+          game_type: string
+          house_edge: number | null
+          icon_url: string | null
+          id: string
+          is_active: boolean
+          max_bet: number | null
+          min_bet: number | null
+          multiplayer_enabled: boolean
+          title: string
+          tournament_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          bot_difficulty?: string | null
+          bot_enabled?: boolean
+          bot_win_probability?: number | null
+          created_at?: string
+          description?: string | null
+          game_file_url?: string | null
+          game_type: string
+          house_edge?: number | null
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean
+          max_bet?: number | null
+          min_bet?: number | null
+          multiplayer_enabled?: boolean
+          title: string
+          tournament_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          bot_difficulty?: string | null
+          bot_enabled?: boolean
+          bot_win_probability?: number | null
+          created_at?: string
+          description?: string | null
+          game_file_url?: string | null
+          game_type?: string
+          house_edge?: number | null
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean
+          max_bet?: number | null
+          min_bet?: number | null
+          multiplayer_enabled?: boolean
+          title?: string
+          tournament_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notices: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          title?: string
+        }
+        Relationships: []
+      }
+      payment_requests: {
+        Row: {
+          admin_note: string | null
+          amount: number
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          screenshot_url: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          amount: number
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          screenshot_url: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          screenshot_url?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          id: string
+          privacy_accepted: boolean
+          security_flags: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+          username: string
+          wallet_balance: number
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          privacy_accepted?: boolean
+          security_flags?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          username: string
+          wallet_balance?: number
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          privacy_accepted?: boolean
+          security_flags?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          username?: string
+          wallet_balance?: number
+        }
+        Relationships: []
+      }
+      tournament_participants: {
+        Row: {
+          id: string
+          joined_at: string
+          tournament_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          tournament_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          tournament_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_participants_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournaments: {
+        Row: {
+          created_at: string
+          current_players: number
+          entry_fee: number
+          game_id: string
+          id: string
+          match_type: string | null
+          max_players: number
+          prize_pool: number
+          start_time: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_players?: number
+          entry_fee?: number
+          game_id: string
+          id?: string
+          match_type?: string | null
+          max_players?: number
+          prize_pool?: number
+          start_time: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_players?: number
+          entry_fee?: number
+          game_id?: string
+          id?: string
+          match_type?: string | null
+          max_players?: number
+          prize_pool?: number
+          start_time?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournaments_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          fee: number | null
+          id: string
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          fee?: number | null
+          id?: string
+          status?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          fee?: number | null
+          id?: string
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +468,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
