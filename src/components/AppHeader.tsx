@@ -2,19 +2,24 @@ import { User, Shield, Moon, Sun, LogIn } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AppHeader() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, profile } = useAuth();
   const { theme, toggleTheme } = useTheme();
+
+  const avatarUrl = profile?.avatar_url
+    ? supabase.storage.from("avatars").getPublicUrl(profile.avatar_url).data.publicUrl
+    : null;
 
   return (
     <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="flex items-center justify-between h-14 px-4 max-w-7xl mx-auto">
         <Link to="/" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">FF</span>
+            <span className="text-primary-foreground font-bold text-xs">FC</span>
           </div>
-          <span className="font-semibold text-sm tracking-tight">Fair Fun Studios</span>
+          <span className="font-semibold text-sm tracking-tight">FairClash</span>
         </Link>
         <div className="flex items-center gap-1">
           <button
@@ -34,9 +39,15 @@ export function AppHeader() {
           {user ? (
             <Link
               to="/profile"
-              className="h-9 w-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="h-9 w-9 rounded-lg flex items-center justify-center overflow-hidden"
             >
-              <User className="h-4 w-4" />
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="h-8 w-8 rounded-lg object-cover" />
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+              )}
             </Link>
           ) : (
             <Link

@@ -97,8 +97,9 @@ const AIPage = () => {
             <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
               <MessageSquare className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-lg font-semibold mb-2">Game AI Assistant</h2>
+            <h2 className="text-lg font-semibold mb-2">FairClash AI Assistant</h2>
             <p className="text-sm text-muted-foreground max-w-sm">Ask about game rules, tournaments, or anything about the platform.</p>
+            <p className="text-[10px] text-muted-foreground mt-3">Powered by Fair Fun Studios</p>
           </div>
         ) : (
           messages.map((msg, i) => (
