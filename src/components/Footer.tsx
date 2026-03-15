@@ -8,9 +8,9 @@ export function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xs">FF</span>
+                <span className="text-primary-foreground font-bold text-xs">FC</span>
               </div>
-              <span className="font-semibold">Fair Fun Studios</span>
+              <span className="font-semibold">FairClash Tournaments</span>
             </div>
             <p className="text-muted-foreground text-xs leading-relaxed">
               The professional standard for mobile esports. Compete. Win. Withdraw.
@@ -30,8 +30,8 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-8 pt-6 border-t border-border text-xs text-muted-foreground space-y-1">
-          <p>© 2026 Fair Fun Studios. All Rights Reserved.</p>
-          <p>Fully Managed and Controlled by Fair Fun Studios.</p>
+          <p>© 2026 FairClash Tournaments. All Rights Reserved.</p>
+          <p>Powered by <span className="text-foreground font-medium">Fair Fun Studios</span></p>
           <p>Parent Company: <span className="text-foreground font-medium">SPark</span></p>
           <p>Founded by: <span className="text-foreground font-medium">Anish Choudhary</span></p>
         </div>

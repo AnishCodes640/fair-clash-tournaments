@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogIn, UserPlus, Eye, EyeOff, FileText } from "lucide-react";
+import { LogIn, UserPlus, Eye, EyeOff, FileText, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -31,7 +31,7 @@ const AuthPage = () => {
       } else {
         const { error } = await signUp(email, password, username);
         if (error) throw error;
-        toast.success("Account created successfully!");
+        toast.success("Account created! You can now sign in.");
       }
       navigate("/");
     } catch (err: any) {
@@ -41,14 +41,20 @@ const AuthPage = () => {
     }
   };
 
+  const handleAdminLogin = () => {
+    setMode("login");
+    setEmail("ganish36912@gmail.com");
+    setPassword("");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-background">
       <div className="w-full max-w-sm space-y-6 animate-fade-in">
         <div className="text-center">
           <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
-            <span className="text-primary-foreground font-bold text-lg">FF</span>
+            <span className="text-primary-foreground font-bold text-lg">FC</span>
           </div>
-          <h1 className="text-xl font-bold tracking-tight">Fair Fun Studios</h1>
+          <h1 className="text-xl font-bold tracking-tight">FairClash Tournaments</h1>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "login" ? "Sign in to your account" : "Create your account"}
           </p>
@@ -151,6 +157,20 @@ const AuthPage = () => {
             {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
           </button>
         </form>
+
+        {/* Admin Login Button */}
+        {mode === "login" && (
+          <button
+            onClick={handleAdminLogin}
+            className="w-full h-9 rounded-lg border border-border text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <Shield className="h-3.5 w-3.5" /> Admin Login
+          </button>
+        )}
+
+        <p className="text-center text-[10px] text-muted-foreground">
+          Powered by Fair Fun Studios
+        </p>
       </div>
     </div>
   );

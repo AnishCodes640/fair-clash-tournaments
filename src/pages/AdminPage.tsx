@@ -2,8 +2,7 @@ import {
   Users, Gamepad2, Trophy, Wallet, AlertTriangle,
   TrendingUp, Ban, CreditCard, Settings, Bell,
   Shield, Upload, Plus, Search, Eye, Check, X,
-  FileText, Palette, ChevronRight, LogOut, Image,
-  Moon, Sun
+  FileText, ChevronRight, Image, Moon, Sun
 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +39,9 @@ const AdminPage = () => {
   const [gameBot, setGameBot] = useState(false);
   const [gameIcon, setGameIcon] = useState<File | null>(null);
   const [gameFile, setGameFile] = useState<File | null>(null);
+  const [gameMinBet, setGameMinBet] = useState("");
+  const [gameMaxBet, setGameMaxBet] = useState("");
+  const [gameHouseEdge, setGameHouseEdge] = useState("");
   const gameIconRef = useRef<HTMLInputElement>(null);
   const gameFileRef = useRef<HTMLInputElement>(null);
 
@@ -59,15 +61,17 @@ const AdminPage = () => {
   const [features, setFeatures] = useState<any>({});
 
   const loadDashboard = async () => {
-    const [profilesRes, gamesRes, tournamentsRes, paymentsRes] = await Promise.all([
+    const [profilesRes, gamesRes, tournamentsRes, paymentsRes, earningsRes] = await Promise.all([
       supabase.from("profiles").select("*"),
       supabase.from("games").select("*"),
       supabase.from("tournaments").select("*"),
       supabase.from("payment_requests").select("*").eq("status", "pending"),
+      supabase.from("wallet_transactions").select("fee").not("fee", "is", null),
     ]);
     const profiles = profilesRes.data || [];
     const allGames = gamesRes.data || [];
     const allTournaments = tournamentsRes.data || [];
+    const totalEarnings = (earningsRes.data || []).reduce((sum: number, t: any) => sum + Number(t.fee || 0), 0);
     setStats({
       totalUsers: profiles.length,
       activeUsers: profiles.filter((p: any) => p.status === "active").length,
@@ -75,7 +79,7 @@ const AdminPage = () => {
       totalGames: allGames.length,
       tournaments: allTournaments.length,
       pendingDeposits: (paymentsRes.data || []).length,
-      earnings: 0,
+      earnings: totalEarnings,
       totalWallet: profiles.reduce((sum: number, p: any) => sum + Number(p.wallet_balance || 0), 0),
     });
     setUsers(profiles);
@@ -88,7 +92,7 @@ const AdminPage = () => {
   };
 
   const loadPayments = async () => {
-    const { data } = await supabase.from("payment_requests").select("*, profiles!payment_requests_user_id_fkey(username, email)").order("created_at", { ascending: false });
+    const { data } = await supabase.from("payment_requests").select("*").order("created_at", { ascending: false });
     setPayments(data || []);
   };
 
@@ -98,12 +102,14 @@ const AdminPage = () => {
   };
 
   useEffect(() => {
-    loadDashboard();
-    const channel = supabase.channel("admin-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "payment_requests" }, () => { loadDashboard(); loadPayments(); })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+    if (isAdmin) {
+      loadDashboard();
+      const channel = supabase.channel("admin-realtime")
+        .on("postgres_changes", { event: "*", schema: "public", table: "payment_requests" }, () => { loadDashboard(); loadPayments(); })
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     if (activeTab === "payments") loadPayments();
@@ -193,10 +199,14 @@ const AdminPage = () => {
         tournament_enabled: gameTournament,
         multiplayer_enabled: gameMultiplayer,
         bot_enabled: gameBot,
+        min_bet: gameMinBet ? parseFloat(gameMinBet) : null,
+        max_bet: gameMaxBet ? parseFloat(gameMaxBet) : null,
+        house_edge: gameHouseEdge ? parseFloat(gameHouseEdge) : null,
       });
       toast.success("Game added!");
       setShowGameForm(false);
       setGameTitle(""); setGameDesc(""); setGameIcon(null); setGameFile(null);
+      setGameMinBet(""); setGameMaxBet(""); setGameHouseEdge("");
       loadDashboard();
     } catch (err: any) {
       toast.error(err.message);
@@ -208,6 +218,12 @@ const AdminPage = () => {
     if (!confirm("Delete this game?")) return;
     await supabase.from("games").delete().eq("id", id);
     toast.success("Game deleted");
+    loadDashboard();
+  };
+
+  const handleToggleGame = async (id: string, isActive: boolean) => {
+    await supabase.from("games").update({ is_active: !isActive }).eq("id", id);
+    toast.success(isActive ? "Game disabled" : "Game enabled");
     loadDashboard();
   };
 
@@ -243,7 +259,12 @@ const AdminPage = () => {
 
   const handleKillSwitch = async (key: string) => {
     const newFeatures = { ...features, [key]: !features[key] };
-    await supabase.from("app_settings").update({ value: newFeatures }).eq("key", "features");
+    const { data: existing } = await supabase.from("app_settings").select("id").eq("key", "features").single();
+    if (existing) {
+      await supabase.from("app_settings").update({ value: newFeatures }).eq("key", "features");
+    } else {
+      await supabase.from("app_settings").insert({ key: "features", value: newFeatures });
+    }
     setFeatures(newFeatures);
     toast.success(`${key} ${newFeatures[key] ? "enabled" : "disabled"}`);
   };
@@ -267,17 +288,15 @@ const AdminPage = () => {
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Command Center</h1>
-          <p className="text-xs text-muted-foreground mt-1">Admin Dashboard</p>
+          <h1 className="text-xl font-bold tracking-tight">FairClash Admin</h1>
+          <p className="text-xs text-muted-foreground mt-1">Command Center</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="h-8 px-3 rounded-md bg-destructive/10 text-destructive text-xs font-medium flex items-center gap-1.5">
-            <AlertTriangle className="h-3 w-3" /> Admin Only
-          </span>
-        </div>
+        <span className="h-8 px-3 rounded-md bg-destructive/10 text-destructive text-xs font-medium flex items-center gap-1.5">
+          <AlertTriangle className="h-3 w-3" /> Admin Only
+        </span>
       </div>
 
-      {/* Tab Nav - horizontal scrollable */}
+      {/* Tab Nav */}
       <div className="flex gap-1 overflow-x-auto bg-secondary rounded-lg p-1 no-scrollbar">
         {adminTabs.map((tab) => (
           <button
@@ -290,6 +309,11 @@ const AdminPage = () => {
           >
             <tab.icon className="h-3.5 w-3.5" />
             {tab.label}
+            {tab.id === "payments" && stats.pendingDeposits > 0 && (
+              <span className="ml-1 h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                {stats.pendingDeposits}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -312,22 +336,17 @@ const AdminPage = () => {
           <section className="surface-card rounded-lg p-4 border-l-2 border-l-destructive space-y-3">
             <p className="text-sm font-medium">Emergency Controls</p>
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => handleKillSwitch("withdrawals_enabled")}
-                className={cn("h-8 px-3 rounded-md text-xs font-medium",
-                  features.withdrawals_enabled ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                )}
-              >
-                Withdrawals: {features.withdrawals_enabled ? "ON" : "OFF"}
-              </button>
-              <button
-                onClick={() => handleKillSwitch("games_enabled")}
-                className={cn("h-8 px-3 rounded-md text-xs font-medium",
-                  features.games_enabled ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                )}
-              >
-                Games: {features.games_enabled ? "ON" : "OFF"}
-              </button>
+              {["withdrawals_enabled", "games_enabled", "deposits_enabled", "tournaments_enabled"].map((key) => (
+                <button
+                  key={key}
+                  onClick={() => handleKillSwitch(key)}
+                  className={cn("h-8 px-3 rounded-md text-xs font-medium",
+                    features[key] ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  )}
+                >
+                  {key.replace("_enabled", "").replace("_", " ")}: {features[key] ? "ON" : "OFF"}
+                </button>
+              ))}
             </div>
           </section>
         </div>
@@ -346,6 +365,7 @@ const AdminPage = () => {
               className="w-full h-10 rounded-lg bg-card border border-border pl-10 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
+          <p className="text-xs text-muted-foreground">{filteredUsers.length} users found</p>
           <div className="space-y-2">
             {filteredUsers.map((u) => (
               <div key={u.id} className="surface-card rounded-lg p-4">
@@ -354,13 +374,11 @@ const AdminPage = () => {
                     <p className="text-sm font-medium">{u.username}</p>
                     <p className="text-xs text-muted-foreground">{u.email}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium",
-                      u.status === "active" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                    )}>
-                      {u.status}
-                    </span>
-                  </div>
+                  <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium",
+                    u.status === "active" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  )}>
+                    {u.status}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
                   <span className="font-mono-num">₹{Number(u.wallet_balance).toFixed(2)}</span>
@@ -392,8 +410,8 @@ const AdminPage = () => {
             <div key={p.id} className="surface-card rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <p className="text-sm font-medium">₹{Number(p.amount).toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground">{(p as any).profiles?.username} — {(p as any).profiles?.email}</p>
+                  <p className="text-sm font-medium font-mono-num">₹{Number(p.amount).toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">User: {p.user_id.slice(0, 8)}...</p>
                 </div>
                 <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium",
                   p.status === "pending" ? "bg-warning/10 text-warning" : p.status === "approved" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
@@ -462,6 +480,26 @@ const AdminPage = () => {
                   Bot
                 </label>
               </div>
+
+              {/* Bet/Edge controls */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">Min Bet</label>
+                  <input type="number" placeholder="₹" value={gameMinBet} onChange={(e) => setGameMinBet(e.target.value)}
+                    className="w-full h-9 rounded-lg bg-background border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">Max Bet</label>
+                  <input type="number" placeholder="₹" value={gameMaxBet} onChange={(e) => setGameMaxBet(e.target.value)}
+                    className="w-full h-9 rounded-lg bg-background border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">House Edge %</label>
+                  <input type="number" placeholder="%" value={gameHouseEdge} onChange={(e) => setGameHouseEdge(e.target.value)}
+                    className="w-full h-9 rounded-lg bg-background border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <input type="file" ref={gameIconRef} accept="image/*" onChange={(e) => setGameIcon(e.target.files?.[0] || null)} className="hidden" />
@@ -474,7 +512,7 @@ const AdminPage = () => {
                   <input type="file" ref={gameFileRef} accept=".html,.zip,.js" onChange={(e) => setGameFile(e.target.files?.[0] || null)} className="hidden" />
                   <button type="button" onClick={() => gameFileRef.current?.click()}
                     className="w-full h-10 rounded-lg border border-dashed border-border text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-                    <Upload className="h-3.5 w-3.5" /> {gameFile ? gameFile.name : "Game File"}
+                    <Upload className="h-3.5 w-3.5" /> {gameFile ? gameFile.name : "Game File (.html)"}
                   </button>
                 </div>
               </div>
@@ -501,7 +539,15 @@ const AdminPage = () => {
                     <p className="text-xs text-muted-foreground capitalize">{g.game_type.replace("_", " ")}</p>
                   </div>
                 </div>
-                <button onClick={() => handleDeleteGame(g.id)} className="h-7 px-2 rounded bg-destructive/10 text-destructive text-[10px] font-medium">Delete</button>
+                <div className="flex gap-1">
+                  <button onClick={() => handleToggleGame(g.id, g.is_active)}
+                    className={cn("h-7 px-2 rounded text-[10px] font-medium",
+                      g.is_active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
+                    )}>
+                    {g.is_active ? "Active" : "Disabled"}
+                  </button>
+                  <button onClick={() => handleDeleteGame(g.id)} className="h-7 px-2 rounded bg-destructive/10 text-destructive text-[10px] font-medium">Delete</button>
+                </div>
               </div>
             ))}
           </div>
@@ -594,12 +640,15 @@ const AdminPage = () => {
 
       {/* SETTINGS */}
       {activeTab === "settings" && (
-        <div className="surface-card rounded-lg p-4">
-          <p className="text-sm font-medium mb-4">Platform Settings</p>
+        <div className="surface-card rounded-lg p-4 space-y-4">
+          <p className="text-sm font-medium">Platform Settings</p>
           <div className="space-y-3 text-xs text-muted-foreground">
-            <p>Commission Rate: 40%</p>
-            <p>Platform: Fair Fun Studios</p>
-            <p>Admin: ganish36912@gmail.com</p>
+            <p>Commission Rate: <span className="text-foreground font-medium">40%</span></p>
+            <p>Min Deposit: <span className="text-foreground font-medium">₹50</span></p>
+            <p>Min Withdrawal: <span className="text-foreground font-medium">₹100</span></p>
+            <p>Platform: <span className="text-foreground font-medium">FairClash Tournaments</span></p>
+            <p>Powered by: <span className="text-foreground font-medium">Fair Fun Studios</span></p>
+            <p>Admin: <span className="text-foreground font-medium">ganish36912@gmail.com</span></p>
           </div>
         </div>
       )}

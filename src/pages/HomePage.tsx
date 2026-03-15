@@ -1,4 +1,4 @@
-import { Trophy, Gamepad2, Users, TrendingUp, ArrowRight, Bell } from "lucide-react";
+import { Trophy, Gamepad2, ArrowRight, Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,8 +32,8 @@ const HomePage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-8 animate-fade-in">
       <section className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">Compete. Win. Withdraw.</h1>
-        <p className="text-sm text-muted-foreground">The professional standard for mobile esports.</p>
+        <h1 className="text-2xl font-bold tracking-tight">FairClash Tournaments</h1>
+        <p className="text-sm text-muted-foreground">Compete. Win. Withdraw. The professional standard for mobile esports.</p>
       </section>
 
       <section className="grid grid-cols-2 gap-3">
@@ -71,7 +71,6 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Notices */}
       {notices.length > 0 ? (
         <section className="space-y-2">
           {notices.map((n) => (
