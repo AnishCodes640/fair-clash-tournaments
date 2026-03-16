@@ -42,6 +42,7 @@ const AdminPage = () => {
   const [gameMinBet, setGameMinBet] = useState("");
   const [gameMaxBet, setGameMaxBet] = useState("");
   const [gameHouseEdge, setGameHouseEdge] = useState("");
+  const [gamePreviewUrl, setGamePreviewUrl] = useState<string | null>(null);
   const gameIconRef = useRef<HTMLInputElement>(null);
   const gameFileRef = useRef<HTMLInputElement>(null);
 
