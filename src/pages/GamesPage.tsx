@@ -1,10 +1,13 @@
-import { Gamepad2, Play } from "lucide-react";
+import { Gamepad2, Play, Plane } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Link, useNavigate } from "react-router-dom";
+import aviatorLogo from "@/assets/aviator-logo.jpg";
 
 const GamesPage = () => {
   const [games, setGames] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -25,26 +28,33 @@ const GamesPage = () => {
     return labels[type] || type;
   };
 
-  const openGame = (game: any) => {
-    if (game.game_file_url) {
-      const url = supabase.storage.from("game-files").getPublicUrl(game.game_file_url).data.publicUrl;
-      window.open(url, "_blank");
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
       <h1 className="text-xl font-bold tracking-tight">Games</h1>
 
+      {/* Built-in Aviator Game */}
+      <Link to="/aviator" className="block surface-card rounded-xl overflow-hidden group hover:border-primary/30 transition-all">
+        <div className="flex items-center gap-4 p-4">
+          <img src={aviatorLogo} alt="Aviator Crash" className="h-14 w-14 rounded-xl object-cover" />
+          <div className="flex-1">
+            <p className="text-sm font-bold flex items-center gap-1.5">
+              <Plane className="h-4 w-4 text-primary" /> Aviator Crash
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">Watch the multiplier grow and cash out before crash!</p>
+            <div className="flex gap-1 mt-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">Live</span>
+              <span className="px-1.5 py-0.5 rounded bg-success/10 text-success text-[10px] font-medium">Wallet</span>
+            </div>
+          </div>
+          <Play className="h-5 w-5 text-primary" />
+        </div>
+      </Link>
+
       {loading ? (
         <div className="surface-card rounded-lg p-12 text-center text-sm text-muted-foreground">Loading games...</div>
       ) : games.length === 0 ? (
-        <div className="surface-card rounded-lg p-12 flex flex-col items-center justify-center text-center">
-          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <Gamepad2 className="h-8 w-8 text-primary" />
-          </div>
-          <h2 className="text-lg font-semibold mb-2">No Games Available</h2>
-          <p className="text-sm text-muted-foreground max-w-sm">Games will appear here once the admin adds them.</p>
+        <div className="surface-card rounded-lg p-8 text-center text-sm text-muted-foreground">
+          More games coming soon! Admin can upload games from the panel.
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -74,7 +84,7 @@ const GamesPage = () => {
                 </div>
                 {game.game_file_url && (
                   <button
-                    onClick={() => openGame(game)}
+                    onClick={() => navigate(`/play/${game.id}`)}
                     className="w-full mt-3 h-8 rounded-md bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
                   >
                     <Play className="h-3 w-3" /> Play

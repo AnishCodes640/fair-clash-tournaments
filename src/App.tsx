@@ -15,6 +15,8 @@ import ProfilePage from "./pages/ProfilePage";
 import AdminPage from "./pages/AdminPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import AuthPage from "./pages/AuthPage";
+import AviatorPage from "./pages/AviatorPage";
+import GamePlayPage from "./pages/GamePlayPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +39,8 @@ const App = () => (
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/admin" element={<AdminPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/aviator" element={<AviatorPage />} />
+                <Route path="/play/:id" element={<GamePlayPage />} />
               </Route>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<NotFound />} />
