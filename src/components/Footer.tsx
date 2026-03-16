@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import fairclashLogo from "@/assets/fairclash-logo.jpg";
 
 export function Footer() {
   return (
@@ -7,10 +8,8 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xs">FC</span>
-              </div>
-              <span className="font-semibold">FairClash Tournaments</span>
+              <img src={fairclashLogo} alt="FairClash" className="h-8 w-8 rounded-md object-cover" />
+              <span className="font-bold">FairClash Tournaments</span>
             </div>
             <p className="text-muted-foreground text-xs leading-relaxed">
               The professional standard for mobile esports. Compete. Win. Withdraw.
@@ -32,7 +31,6 @@ export function Footer() {
         <div className="mt-8 pt-6 border-t border-border text-xs text-muted-foreground space-y-1">
           <p>© 2026 FairClash Tournaments. All Rights Reserved.</p>
           <p>Powered by <span className="text-foreground font-medium">Fair Fun Studios</span></p>
-          <p>Parent Company: <span className="text-foreground font-medium">SPark</span></p>
           <p>Founded by: <span className="text-foreground font-medium">Anish Choudhary</span></p>
         </div>
       </div>

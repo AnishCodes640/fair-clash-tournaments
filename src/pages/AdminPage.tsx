@@ -42,6 +42,7 @@ const AdminPage = () => {
   const [gameMinBet, setGameMinBet] = useState("");
   const [gameMaxBet, setGameMaxBet] = useState("");
   const [gameHouseEdge, setGameHouseEdge] = useState("");
+  const [gamePreviewUrl, setGamePreviewUrl] = useState<string | null>(null);
   const gameIconRef = useRef<HTMLInputElement>(null);
   const gameFileRef = useRef<HTMLInputElement>(null);
 
@@ -206,7 +207,7 @@ const AdminPage = () => {
       toast.success("Game added!");
       setShowGameForm(false);
       setGameTitle(""); setGameDesc(""); setGameIcon(null); setGameFile(null);
-      setGameMinBet(""); setGameMaxBet(""); setGameHouseEdge("");
+      setGameMinBet(""); setGameMaxBet(""); setGameHouseEdge(""); setGamePreviewUrl(null);
       loadDashboard();
     } catch (err: any) {
       toast.error(err.message);
@@ -509,13 +510,40 @@ const AdminPage = () => {
                   </button>
                 </div>
                 <div>
-                  <input type="file" ref={gameFileRef} accept=".html,.zip,.js" onChange={(e) => setGameFile(e.target.files?.[0] || null)} className="hidden" />
+                  <input type="file" ref={gameFileRef} accept=".html,.zip,.js" onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setGameFile(file);
+                    if (file && file.name.endsWith(".html")) {
+                      const url = URL.createObjectURL(file);
+                      setGamePreviewUrl(url);
+                    } else {
+                      setGamePreviewUrl(null);
+                    }
+                  }} className="hidden" />
                   <button type="button" onClick={() => gameFileRef.current?.click()}
                     className="w-full h-10 rounded-lg border border-dashed border-border text-xs text-muted-foreground flex items-center justify-center gap-1.5">
                     <Upload className="h-3.5 w-3.5" /> {gameFile ? gameFile.name : "Game File (.html)"}
                   </button>
                 </div>
               </div>
+
+              {/* Game Preview */}
+              {gamePreviewUrl && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <Eye className="h-3 w-3" /> Game Preview
+                  </p>
+                  <div className="rounded-lg overflow-hidden border border-border bg-background">
+                    <iframe
+                      src={gamePreviewUrl}
+                      className="w-full aspect-[16/10] border-0"
+                      sandbox="allow-scripts"
+                      title="Game Preview"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Preview of uploaded HTML game. Games will use FairClash Wallet API when published.</p>
+                </div>
+              )}
               <button type="submit" disabled={loading}
                 className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
                 {loading ? "Adding..." : "Add Game"}

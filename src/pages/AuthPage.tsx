@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { LogIn, UserPlus, Eye, EyeOff, FileText, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import fairclashLogo from "@/assets/fairclash-logo.jpg";
 
 const AuthPage = () => {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -51,16 +52,13 @@ const AuthPage = () => {
     <div className="min-h-screen flex items-center justify-center px-4 bg-background">
       <div className="w-full max-w-sm space-y-6 animate-fade-in">
         <div className="text-center">
-          <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
-            <span className="text-primary-foreground font-bold text-lg">FC</span>
-          </div>
+          <img src={fairclashLogo} alt="FairClash Tournaments" className="h-20 w-20 rounded-2xl object-cover mx-auto mb-4 glow-primary" />
           <h1 className="text-xl font-bold tracking-tight">FairClash Tournaments</h1>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "login" ? "Sign in to your account" : "Create your account"}
           </p>
         </div>
 
-        {/* Toggle */}
         <div className="flex gap-1 bg-secondary rounded-lg p-1">
           <button
             onClick={() => setMode("login")}
@@ -86,84 +84,45 @@ const AuthPage = () => {
           {mode === "signup" && (
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="Choose a username"
-              />
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required
+                className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Choose a username" />
             </div>
           )}
-
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="you@example.com"
-            />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+              className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="you@example.com" />
           </div>
-
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Password</label>
             <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full h-10 rounded-lg bg-card border border-border px-3 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
+              <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
+                className="w-full h-10 rounded-lg bg-card border border-border px-3 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="••••••••" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
-
           {mode === "signup" && (
             <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={privacyAccepted}
-                onChange={(e) => setPrivacyAccepted(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
-              />
+              <input type="checkbox" checked={privacyAccepted} onChange={(e) => setPrivacyAccepted(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-border accent-primary" />
               <span className="text-xs text-muted-foreground leading-relaxed">
                 I accept the{" "}
                 <a href="/privacy" target="_blank" className="text-primary hover:underline inline-flex items-center gap-1">
-                  <FileText className="h-3 w-3" />
-                  Privacy Policy
+                  <FileText className="h-3 w-3" /> Privacy Policy
                 </a>
               </span>
             </label>
           )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading}
+            className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
             {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
           </button>
         </form>
 
-        {/* Admin Login Button */}
         {mode === "login" && (
-          <button
-            onClick={handleAdminLogin}
-            className="w-full h-9 rounded-lg border border-border text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 hover:bg-accent hover:text-foreground transition-colors"
-          >
+          <button onClick={handleAdminLogin}
+            className="w-full h-9 rounded-lg border border-border text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 hover:bg-accent hover:text-foreground transition-colors">
             <Shield className="h-3.5 w-3.5" /> Admin Login
           </button>
         )}
