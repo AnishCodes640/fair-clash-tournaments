@@ -207,7 +207,7 @@ const AdminPage = () => {
       toast.success("Game added!");
       setShowGameForm(false);
       setGameTitle(""); setGameDesc(""); setGameIcon(null); setGameFile(null);
-      setGameMinBet(""); setGameMaxBet(""); setGameHouseEdge("");
+      setGameMinBet(""); setGameMaxBet(""); setGameHouseEdge(""); setGamePreviewUrl(null);
       loadDashboard();
     } catch (err: any) {
       toast.error(err.message);
