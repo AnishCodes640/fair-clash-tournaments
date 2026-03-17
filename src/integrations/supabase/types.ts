@@ -35,6 +35,39 @@ export type Database = {
         }
         Relationships: []
       }
+      game_sessions: {
+        Row: {
+          bet_amount: number | null
+          created_at: string
+          game_id: string
+          game_title: string
+          id: string
+          result: string | null
+          user_id: string
+          win_amount: number | null
+        }
+        Insert: {
+          bet_amount?: number | null
+          created_at?: string
+          game_id: string
+          game_title: string
+          id?: string
+          result?: string | null
+          user_id: string
+          win_amount?: number | null
+        }
+        Update: {
+          bet_amount?: number | null
+          created_at?: string
+          game_id?: string
+          game_title?: string
+          id?: string
+          result?: string | null
+          user_id?: string
+          win_amount?: number | null
+        }
+        Relationships: []
+      }
       games: {
         Row: {
           bot_difficulty: string | null
@@ -97,22 +130,28 @@ export type Database = {
       }
       notices: {
         Row: {
+          auto_expiry_hours: number | null
           content: string
           created_at: string
+          expiry_at: string | null
           id: string
           is_active: boolean
           title: string
         }
         Insert: {
+          auto_expiry_hours?: number | null
           content: string
           created_at?: string
+          expiry_at?: string | null
           id?: string
           is_active?: boolean
           title: string
         }
         Update: {
+          auto_expiry_hours?: number | null
           content?: string
           created_at?: string
+          expiry_at?: string | null
           id?: string
           is_active?: boolean
           title?: string
@@ -329,6 +368,51 @@ export type Database = {
           id?: string
           status?: string
           type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      withdrawal_requests: {
+        Row: {
+          admin_note: string | null
+          amount: number
+          created_at: string
+          id: string
+          mobile_number: string | null
+          net_amount: number
+          platform_fee: number
+          qr_code_url: string | null
+          reviewed_at: string | null
+          status: string
+          upi_id: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          amount: number
+          created_at?: string
+          id?: string
+          mobile_number?: string | null
+          net_amount?: number
+          platform_fee?: number
+          qr_code_url?: string | null
+          reviewed_at?: string | null
+          status?: string
+          upi_id?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          mobile_number?: string | null
+          net_amount?: number
+          platform_fee?: number
+          qr_code_url?: string | null
+          reviewed_at?: string | null
+          status?: string
+          upi_id?: string | null
           user_id?: string
         }
         Relationships: []
