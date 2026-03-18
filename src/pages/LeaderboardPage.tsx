@@ -1,59 +1,124 @@
-import { Crown, User, Shield, Gamepad2, Trophy } from "lucide-react";
+import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
+type RankingType = "balance" | "wins" | "games" | "total_bets" | "total_winnings";
+
+interface PlayerData {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  wallet_balance: number;
+  totalGames: number;
+  wins: number;
+  totalBets: number;
+  totalWinnings: number;
+}
+
 const LeaderboardPage = () => {
   const { user } = useAuth();
-  const [players, setPlayers] = useState<any[]>([]);
-  const [adminUserIds, setAdminUserIds] = useState<string[]>([]);
-  const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
-  const [playerStats, setPlayerStats] = useState<any>(null);
+  const [players, setPlayers] = useState<PlayerData[]>([]);
+  const [ranking, setRanking] = useState<RankingType>("balance");
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const [profilesRes, adminsRes] = await Promise.all([
-        supabase.from("profiles").select("*").eq("status", "active").order("wallet_balance", { ascending: false }).limit(50),
-        supabase.from("user_roles").select("user_id").eq("role", "admin"),
+      setLoading(true);
+      const [profilesRes, sessionsRes] = await Promise.all([
+        supabase.from("profiles").select("user_id, username, display_name, avatar_url, wallet_balance").eq("status", "active"),
+        supabase.from("game_sessions").select("user_id, result, bet_amount, win_amount"),
       ]);
-      const admins = (adminsRes.data || []).map((r: any) => r.user_id);
-      setAdminUserIds(admins);
 
-      // Sort: admins first, then by balance
-      const sorted = (profilesRes.data || []).sort((a: any, b: any) => {
-        const aAdmin = admins.includes(a.user_id);
-        const bAdmin = admins.includes(b.user_id);
-        if (aAdmin && !bAdmin) return -1;
-        if (!aAdmin && bAdmin) return 1;
-        return Number(b.wallet_balance) - Number(a.wallet_balance);
+      const profiles = profilesRes.data || [];
+      const sessions = sessionsRes.data || [];
+
+      // Aggregate stats per user
+      const statsMap: Record<string, { totalGames: number; wins: number; totalBets: number; totalWinnings: number }> = {};
+      sessions.forEach((s: any) => {
+        if (!statsMap[s.user_id]) statsMap[s.user_id] = { totalGames: 0, wins: 0, totalBets: 0, totalWinnings: 0 };
+        statsMap[s.user_id].totalGames++;
+        if (s.result === "win") statsMap[s.user_id].wins++;
+        statsMap[s.user_id].totalBets += Number(s.bet_amount || 0);
+        statsMap[s.user_id].totalWinnings += Number(s.win_amount || 0);
       });
-      setPlayers(sorted);
+
+      const enriched: PlayerData[] = profiles.map((p: any) => ({
+        user_id: p.user_id,
+        username: p.username,
+        display_name: p.display_name,
+        avatar_url: p.avatar_url,
+        wallet_balance: Number(p.wallet_balance || 0),
+        totalGames: statsMap[p.user_id]?.totalGames || 0,
+        wins: statsMap[p.user_id]?.wins || 0,
+        totalBets: statsMap[p.user_id]?.totalBets || 0,
+        totalWinnings: statsMap[p.user_id]?.totalWinnings || 0,
+      }));
+
+      setPlayers(enriched);
+      setLoading(false);
     };
     load();
+
+    const channel = supabase.channel("leaderboard-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "game_sessions" }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const handlePlayerClick = async (player: any) => {
-    setSelectedPlayer(player);
-    const { data: sessions } = await supabase
-      .from("game_sessions")
-      .select("*")
-      .eq("user_id", player.user_id)
-      .order("created_at", { ascending: false })
-      .limit(20);
-    const totalGames = sessions?.length || 0;
-    const wins = sessions?.filter((s: any) => s.result === "win").length || 0;
-    setPlayerStats({ totalGames, wins, losses: totalGames - wins });
+  const sortedPlayers = [...players].sort((a, b) => {
+    switch (ranking) {
+      case "balance": return b.wallet_balance - a.wallet_balance;
+      case "wins": return b.wins - a.wins;
+      case "games": return b.totalGames - a.totalGames;
+      case "total_bets": return b.totalBets - a.totalBets;
+      case "total_winnings": return b.totalWinnings - a.totalWinnings;
+      default: return 0;
+    }
+  });
+
+  const getValue = (p: PlayerData) => {
+    switch (ranking) {
+      case "balance": return `₹${p.wallet_balance.toFixed(0)}`;
+      case "wins": return `${p.wins} wins`;
+      case "games": return `${p.totalGames} games`;
+      case "total_bets": return `₹${p.totalBets.toFixed(0)}`;
+      case "total_winnings": return `₹${p.totalWinnings.toFixed(0)}`;
+    }
   };
 
+  const tabs: { id: RankingType; label: string; icon: typeof Crown }[] = [
+    { id: "balance", label: "Balance", icon: Wallet },
+    { id: "wins", label: "Wins", icon: Trophy },
+    { id: "games", label: "Games", icon: Gamepad2 },
+    { id: "total_bets", label: "Bets", icon: Target },
+    { id: "total_winnings", label: "Winnings", icon: TrendingUp },
+  ];
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
+    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center gap-2">
         <Crown className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-bold tracking-tight">Leaderboard</h1>
+        <span className="ml-auto text-xs text-muted-foreground font-mono-num">{players.length} players</span>
       </div>
 
-      {/* Selected player modal */}
+      {/* Ranking tabs */}
+      <div className="flex gap-1 overflow-x-auto bg-secondary rounded-lg p-1 no-scrollbar">
+        {tabs.map((tab) => (
+          <button key={tab.id} onClick={() => setRanking(tab.id)}
+            className={cn("flex items-center gap-1.5 py-2 px-3 rounded-md text-xs font-medium whitespace-nowrap transition-colors",
+              ranking === tab.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+            <tab.icon className="h-3.5 w-3.5" />{tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Selected player detail */}
       {selectedPlayer && (
         <div className="surface-card rounded-xl p-4 space-y-3 animate-fade-in border border-primary/20">
           <div className="flex items-center justify-between">
@@ -66,68 +131,73 @@ const LeaderboardPage = () => {
                 )}
               </div>
               <div>
-                <p className="text-sm font-semibold flex items-center gap-1">
-                  {selectedPlayer.display_name || selectedPlayer.username}
-                  {adminUserIds.includes(selectedPlayer.user_id) && <Shield className="h-3 w-3 text-primary" />}
-                </p>
-                {selectedPlayer.bio && <p className="text-[10px] text-muted-foreground">{selectedPlayer.bio}</p>}
+                <p className="text-sm font-semibold">{selectedPlayer.display_name || selectedPlayer.username}</p>
               </div>
             </div>
             <button onClick={() => setSelectedPlayer(null)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
           </div>
-          {playerStats && (
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-secondary rounded-lg p-2 text-center">
-                <Gamepad2 className="h-3.5 w-3.5 mx-auto text-muted-foreground mb-1" />
-                <p className="text-sm font-bold font-mono-num">{playerStats.totalGames}</p>
-                <p className="text-[10px] text-muted-foreground">Games</p>
-              </div>
-              <div className="bg-secondary rounded-lg p-2 text-center">
-                <Trophy className="h-3.5 w-3.5 mx-auto text-success mb-1" />
-                <p className="text-sm font-bold font-mono-num text-success">{playerStats.wins}</p>
-                <p className="text-[10px] text-muted-foreground">Wins</p>
-              </div>
-              <div className="bg-secondary rounded-lg p-2 text-center">
-                <p className="text-sm font-bold font-mono-num text-destructive mt-4">{playerStats.losses}</p>
-                <p className="text-[10px] text-muted-foreground">Losses</p>
-              </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="bg-secondary rounded-lg p-2 text-center">
+              <Gamepad2 className="h-3.5 w-3.5 mx-auto text-muted-foreground mb-1" />
+              <p className="text-sm font-bold font-mono-num">{selectedPlayer.totalGames}</p>
+              <p className="text-[10px] text-muted-foreground">Games</p>
             </div>
-          )}
+            <div className="bg-secondary rounded-lg p-2 text-center">
+              <Trophy className="h-3.5 w-3.5 mx-auto text-success mb-1" />
+              <p className="text-sm font-bold font-mono-num text-success">{selectedPlayer.wins}</p>
+              <p className="text-[10px] text-muted-foreground">Wins</p>
+            </div>
+            <div className="bg-secondary rounded-lg p-2 text-center">
+              <Target className="h-3.5 w-3.5 mx-auto text-primary mb-1" />
+              <p className="text-sm font-bold font-mono-num">₹{selectedPlayer.totalBets.toFixed(0)}</p>
+              <p className="text-[10px] text-muted-foreground">Total Bets</p>
+            </div>
+            <div className="bg-secondary rounded-lg p-2 text-center">
+              <TrendingUp className="h-3.5 w-3.5 mx-auto text-warning mb-1" />
+              <p className="text-sm font-bold font-mono-num">₹{selectedPlayer.totalWinnings.toFixed(0)}</p>
+              <p className="text-[10px] text-muted-foreground">Winnings</p>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Rankings */}
-      <div className="surface-card rounded-xl overflow-hidden">
-        <div className="divide-y divide-border">
-          {players.map((p, i) => {
-            const isAdminUser = adminUserIds.includes(p.user_id);
-            const isCurrentUser = user?.id === p.user_id;
-            const avatarUrl = p.avatar_url ? supabase.storage.from("avatars").getPublicUrl(p.avatar_url).data.publicUrl : null;
-            return (
-              <button key={p.user_id} onClick={() => handlePlayerClick(p)}
-                className={cn("w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-accent/50 transition-colors",
-                  isAdminUser && "bg-primary/5", isCurrentUser && "bg-accent/30")}>
-                <span className={cn("text-xs font-bold w-7 text-center font-mono-num",
-                  i === 0 ? "text-warning" : i === 1 ? "text-muted-foreground" : i === 2 ? "text-warning/60" : "text-muted-foreground")}>
-                  {i <= 2 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}
-                </span>
-                <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> :
-                    <span className="text-xs font-bold text-muted-foreground">{(p.display_name || p.username || "?")[0].toUpperCase()}</span>}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate flex items-center gap-1">
-                    {p.display_name || p.username}
-                    {isAdminUser && <Crown className="h-3 w-3 text-primary" />}
-                    {isCurrentUser && <span className="text-[10px] text-primary">(you)</span>}
-                  </p>
-                </div>
-                <span className="font-mono-num text-xs font-semibold text-primary">₹{Number(p.wallet_balance).toFixed(0)}</span>
-              </button>
-            );
-          })}
+      {/* Rankings list */}
+      {loading ? (
+        <div className="surface-card rounded-xl p-12 text-center text-sm text-muted-foreground">Loading rankings...</div>
+      ) : (
+        <div className="surface-card rounded-xl overflow-hidden">
+          <div className="divide-y divide-border">
+            {sortedPlayers.map((p, i) => {
+              const isCurrentUser = user?.id === p.user_id;
+              const avatarUrl = p.avatar_url ? supabase.storage.from("avatars").getPublicUrl(p.avatar_url).data.publicUrl : null;
+              return (
+                <button key={p.user_id} onClick={() => setSelectedPlayer(p)}
+                  className={cn("w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-accent/50 transition-colors",
+                    isCurrentUser && "bg-primary/5")}>
+                  <span className={cn("text-xs font-bold w-7 text-center font-mono-num",
+                    i === 0 ? "text-warning" : i === 1 ? "text-muted-foreground" : i === 2 ? "text-warning/60" : "text-muted-foreground")}>
+                    {i <= 2 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}
+                  </span>
+                  <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> :
+                      <span className="text-xs font-bold text-muted-foreground">{(p.display_name || p.username || "?")[0].toUpperCase()}</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate flex items-center gap-1">
+                      {p.display_name || p.username}
+                      {isCurrentUser && <span className="text-[10px] text-primary">(you)</span>}
+                    </p>
+                  </div>
+                  <span className="font-mono-num text-xs font-semibold text-primary">{getValue(p)}</span>
+                </button>
+              );
+            })}
+            {sortedPlayers.length === 0 && (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">No players yet</div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
