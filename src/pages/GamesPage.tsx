@@ -23,7 +23,7 @@ const GamesPage = () => {
     return labels[type] || type;
   };
 
-  const totalGames = games.length + 1; // +1 for Aviator
+  const totalGames = games.length + 2; // +2 for Aviator & Ludo
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
