@@ -78,7 +78,7 @@ const LudoPage = () => {
           if (room?.status === "waiting") {
             await supabase.from("ludo_rooms").update({
               status: "playing",
-              board_state: createInitialState(maxPlayers),
+              board_state: JSON.parse(JSON.stringify(createInitialState(maxPlayers))),
               current_turn: 0,
             }).eq("id", roomId);
             setScreen("game");
