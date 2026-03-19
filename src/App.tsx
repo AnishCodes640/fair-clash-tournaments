@@ -18,6 +18,7 @@ import AuthPage from "./pages/AuthPage";
 import AviatorPage from "./pages/AviatorPage";
 import GamePlayPage from "./pages/GamePlayPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import LudoPage from "./pages/LudoPage";
 import RulesPage from "./pages/RulesPage";
 import NotFound from "./pages/NotFound";
 
@@ -44,6 +45,8 @@ const App = () => (
                 <Route path="/aviator" element={<AviatorPage />} />
                 <Route path="/play/:id" element={<GamePlayPage />} />
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
+                <Route path="/ludo" element={<LudoPage />} />
+                <Route path="/rules" element={<RulesPage />} />
                 <Route path="/rules" element={<RulesPage />} />
               </Route>
               <Route path="/auth" element={<AuthPage />} />
