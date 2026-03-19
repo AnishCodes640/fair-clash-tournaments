@@ -45,6 +45,8 @@ const App = () => (
                 <Route path="/aviator" element={<AviatorPage />} />
                 <Route path="/play/:id" element={<GamePlayPage />} />
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
+                <Route path="/ludo" element={<LudoPage />} />
+                <Route path="/rules" element={<RulesPage />} />
                 <Route path="/rules" element={<RulesPage />} />
               </Route>
               <Route path="/auth" element={<AuthPage />} />

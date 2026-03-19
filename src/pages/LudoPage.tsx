@@ -196,7 +196,7 @@ const LudoPage = () => {
       await supabase.from("ludo_rooms").update({
         current_turn: nextTurn,
         dice_value: dice,
-        board_state: { ...gameState, currentTurn: nextTurn, diceValue: dice },
+        board_state: JSON.parse(JSON.stringify({ ...gameState, currentTurn: nextTurn, diceValue: dice })),
       }).eq("id", roomId);
       setDiceRolled(false);
       return;
