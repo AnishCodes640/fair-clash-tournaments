@@ -133,10 +133,10 @@ const LudoPage = () => {
     if (!targetRoom) {
       // Create new room
       const prizePool = entryFee * maxPlayers;
-      const { data: newRoom } = await supabase.from("ludo_rooms").insert({
+      const { data: newRoom } = await supabase.from("ludo_rooms").insert([{
         mode, entry_fee: entryFee, prize_pool: prizePool,
-        board_state: createInitialState(maxPlayers),
-      }).select("id").single();
+        board_state: JSON.parse(JSON.stringify(createInitialState(maxPlayers))),
+      }]).select("id").single();
       if (!newRoom) { toast.error("Failed to create room"); setScreen("lobby"); return; }
       targetRoom = newRoom.id;
     }
