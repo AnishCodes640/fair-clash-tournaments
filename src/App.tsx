@@ -18,6 +18,7 @@ import AuthPage from "./pages/AuthPage";
 import AviatorPage from "./pages/AviatorPage";
 import GamePlayPage from "./pages/GamePlayPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import LudoPage from "./pages/LudoPage";
 import RulesPage from "./pages/RulesPage";
 import NotFound from "./pages/NotFound";
 
