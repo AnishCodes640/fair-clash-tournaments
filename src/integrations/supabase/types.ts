@@ -128,6 +128,95 @@ export type Database = {
         }
         Relationships: []
       }
+      ludo_players: {
+        Row: {
+          avatar_url: string | null
+          finished: boolean
+          id: string
+          is_connected: boolean
+          joined_at: string
+          pieces: Json
+          player_index: number
+          room_id: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          finished?: boolean
+          id?: string
+          is_connected?: boolean
+          joined_at?: string
+          pieces?: Json
+          player_index: number
+          room_id: string
+          user_id: string
+          username?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          finished?: boolean
+          id?: string
+          is_connected?: boolean
+          joined_at?: string
+          pieces?: Json
+          player_index?: number
+          room_id?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ludo_players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "ludo_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ludo_rooms: {
+        Row: {
+          board_state: Json
+          created_at: string
+          current_turn: number
+          dice_value: number | null
+          entry_fee: number
+          id: string
+          mode: string
+          prize_pool: number
+          status: string
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          board_state?: Json
+          created_at?: string
+          current_turn?: number
+          dice_value?: number | null
+          entry_fee?: number
+          id?: string
+          mode?: string
+          prize_pool?: number
+          status?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          board_state?: Json
+          created_at?: string
+          current_turn?: number
+          dice_value?: number | null
+          entry_fee?: number
+          id?: string
+          mode?: string
+          prize_pool?: number
+          status?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       notices: {
         Row: {
           auto_expiry_hours: number | null
