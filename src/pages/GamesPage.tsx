@@ -1,4 +1,4 @@
-import { Gamepad2, Play, Plane } from "lucide-react";
+import { Gamepad2, Play, Plane, Dice5 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useNavigate } from "react-router-dom";
