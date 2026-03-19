@@ -215,10 +215,10 @@ const LudoPage = () => {
     }
 
     // Update room state
-    const newBoardState = {
+    const newBoardState = JSON.parse(JSON.stringify({
       pieces: result.newState.pieces,
       winner: result.newState.winner,
-    };
+    }));
 
     await supabase.from("ludo_rooms").update({
       current_turn: result.newState.currentTurn,
