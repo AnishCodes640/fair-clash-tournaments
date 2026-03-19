@@ -1,4 +1,4 @@
-import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target } from "lucide-react";
+import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ interface PlayerData {
   wins: number;
   totalBets: number;
   totalWinnings: number;
+  isAdmin: boolean;
 }
 
 const LeaderboardPage = () => {
@@ -28,15 +29,18 @@ const LeaderboardPage = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [profilesRes, sessionsRes] = await Promise.all([
+      const [profilesRes, sessionsRes, rolesRes] = await Promise.all([
         supabase.from("profiles").select("user_id, username, display_name, avatar_url, wallet_balance").eq("status", "active"),
         supabase.from("game_sessions").select("user_id, result, bet_amount, win_amount"),
+        supabase.from("user_roles").select("user_id, role"),
       ]);
 
       const profiles = profilesRes.data || [];
       const sessions = sessionsRes.data || [];
+      const roles = rolesRes.data || [];
 
-      // Aggregate stats per user
+      const adminSet = new Set(roles.filter((r: any) => r.role === "admin").map((r: any) => r.user_id));
+
       const statsMap: Record<string, { totalGames: number; wins: number; totalBets: number; totalWinnings: number }> = {};
       sessions.forEach((s: any) => {
         if (!statsMap[s.user_id]) statsMap[s.user_id] = { totalGames: 0, wins: 0, totalBets: 0, totalWinnings: 0 };
@@ -56,6 +60,7 @@ const LeaderboardPage = () => {
         wins: statsMap[p.user_id]?.wins || 0,
         totalBets: statsMap[p.user_id]?.totalBets || 0,
         totalWinnings: statsMap[p.user_id]?.totalWinnings || 0,
+        isAdmin: adminSet.has(p.user_id),
       }));
 
       setPlayers(enriched);
@@ -120,45 +125,7 @@ const LeaderboardPage = () => {
 
       {/* Selected player detail */}
       {selectedPlayer && (
-        <div className="surface-card rounded-xl p-4 space-y-3 animate-fade-in border border-primary/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
-                {selectedPlayer.avatar_url ? (
-                  <img src={supabase.storage.from("avatars").getPublicUrl(selectedPlayer.avatar_url).data.publicUrl} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="h-6 w-6 text-muted-foreground" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-semibold">{selectedPlayer.display_name || selectedPlayer.username}</p>
-              </div>
-            </div>
-            <button onClick={() => setSelectedPlayer(null)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="bg-secondary rounded-lg p-2 text-center">
-              <Gamepad2 className="h-3.5 w-3.5 mx-auto text-muted-foreground mb-1" />
-              <p className="text-sm font-bold font-mono-num">{selectedPlayer.totalGames}</p>
-              <p className="text-[10px] text-muted-foreground">Games</p>
-            </div>
-            <div className="bg-secondary rounded-lg p-2 text-center">
-              <Trophy className="h-3.5 w-3.5 mx-auto text-success mb-1" />
-              <p className="text-sm font-bold font-mono-num text-success">{selectedPlayer.wins}</p>
-              <p className="text-[10px] text-muted-foreground">Wins</p>
-            </div>
-            <div className="bg-secondary rounded-lg p-2 text-center">
-              <Target className="h-3.5 w-3.5 mx-auto text-primary mb-1" />
-              <p className="text-sm font-bold font-mono-num">₹{selectedPlayer.totalBets.toFixed(0)}</p>
-              <p className="text-[10px] text-muted-foreground">Total Bets</p>
-            </div>
-            <div className="bg-secondary rounded-lg p-2 text-center">
-              <TrendingUp className="h-3.5 w-3.5 mx-auto text-warning mb-1" />
-              <p className="text-sm font-bold font-mono-num">₹{selectedPlayer.totalWinnings.toFixed(0)}</p>
-              <p className="text-[10px] text-muted-foreground">Winnings</p>
-            </div>
-          </div>
-        </div>
+        <PlayerDetail player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
       )}
 
       {/* Rankings list */}
@@ -185,6 +152,7 @@ const LeaderboardPage = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate flex items-center gap-1">
                       {p.display_name || p.username}
+                      {p.isAdmin && <Shield className="h-3 w-3 text-primary" />}
                       {isCurrentUser && <span className="text-[10px] text-primary">(you)</span>}
                     </p>
                   </div>
@@ -201,5 +169,48 @@ const LeaderboardPage = () => {
     </div>
   );
 };
+
+function PlayerDetail({ player, onClose }: { player: PlayerData; onClose: () => void }) {
+  const avatarUrl = player.avatar_url ? supabase.storage.from("avatars").getPublicUrl(player.avatar_url).data.publicUrl : null;
+
+  return (
+    <div className="surface-card rounded-xl p-4 space-y-3 animate-fade-in border border-primary/20">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <User className="h-6 w-6 text-muted-foreground" />
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+              {player.display_name || player.username}
+              {player.isAdmin && <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">Admin</span>}
+            </p>
+          </div>
+        </div>
+        <button onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <StatBox icon={Gamepad2} value={String(player.totalGames)} label="Games" />
+        <StatBox icon={Trophy} value={String(player.wins)} label="Wins" color="text-success" />
+        <StatBox icon={Target} value={`₹${player.totalBets.toFixed(0)}`} label="Total Bets" color="text-primary" />
+        <StatBox icon={TrendingUp} value={`₹${player.totalWinnings.toFixed(0)}`} label="Winnings" color="text-warning" />
+      </div>
+    </div>
+  );
+}
+
+function StatBox({ icon: Icon, value, label, color }: { icon: any; value: string; label: string; color?: string }) {
+  return (
+    <div className="bg-secondary rounded-lg p-2 text-center">
+      <Icon className={cn("h-3.5 w-3.5 mx-auto mb-1", color || "text-muted-foreground")} />
+      <p className={cn("text-sm font-bold font-mono-num", color)}>{value}</p>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+    </div>
+  );
+}
 
 export default LeaderboardPage;
