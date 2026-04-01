@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useNavigate } from "react-router-dom";
 import aviatorLogo from "@/assets/aviator-logo.jpg";
+import ludoClashLogo from "@/assets/ludo-clash-logo.jpg";
 
 const GamesPage = () => {
   const [games, setGames] = useState<any[]>([]);
