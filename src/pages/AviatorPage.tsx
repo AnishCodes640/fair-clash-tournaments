@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { placeBet, addWinnings, getWalletBalance } from "@/lib/walletApi";
-import { Plane, TrendingUp, History, Wallet, AlertCircle, Users, DollarSign, Timer, BookOpen, ArrowLeft } from "lucide-react";
+import { Plane, TrendingUp, History, Wallet, AlertCircle, Users, DollarSign, Timer, BookOpen, ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate, Link } from "react-router-dom";
@@ -12,12 +12,40 @@ type GamePhase = "waiting" | "flying" | "crashed" | "cashed_out";
 
 interface RoundHistory { multiplier: number; crashed: boolean; bet: number; won: number; }
 
+// Controlled crash point distribution
 function generateCrashPoint(): number {
-  // House edge ~5%. Crash point = 0.99 / (1 - random), capped
   const r = Math.random();
-  const raw = 0.99 / (1 - r);
-  // Cap at 50x, floor at 1.01
-  return Math.min(Math.max(raw, 1.01), 50);
+  if (r < 0.60) {
+    // 60%: crash between 1.01x–2.5x
+    return 1.01 + Math.random() * 1.49;
+  } else if (r < 0.85) {
+    // 25%: crash between 2.5x–5x
+    return 2.5 + Math.random() * 2.5;
+  } else if (r < 0.97) {
+    // 12%: crash between 5x–8x
+    return 5 + Math.random() * 3;
+  } else {
+    // 3%: crash between 8x–15x (capped, no extreme spikes)
+    return 8 + Math.random() * 7;
+  }
+}
+
+// Simple Web Audio beep generator
+const audioCtx = typeof AudioContext !== "undefined" ? new AudioContext() : null;
+function playSound(freq: number, duration: number, type: OscillatorType = "sine", volume = 0.15) {
+  if (!audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = volume;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.stop(audioCtx.currentTime + duration);
+  } catch {}
 }
 
 const AviatorPage = () => {
@@ -32,6 +60,7 @@ const AviatorPage = () => {
   const [balance, setBalance] = useState(0);
   const [countdown, setCountdown] = useState(7);
   const [showRules, setShowRules] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
   const [fakePlayers, setFakePlayers] = useState(0);
   const [fakeTotalBets, setFakeTotalBets] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -40,7 +69,6 @@ const AviatorPage = () => {
   const crashPointRef = useRef(0);
   const phaseRef = useRef<GamePhase>("waiting");
 
-  // Keep phaseRef in sync
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   useEffect(() => {
@@ -69,27 +97,28 @@ const AviatorPage = () => {
     ctx.scale(dpr, dpr);
     const w = rect.width, h = rect.height;
 
+    // Red-themed dark background
     const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-    bgGrad.addColorStop(0, "#0a1628");
-    bgGrad.addColorStop(1, "#0d1f3c");
+    bgGrad.addColorStop(0, "#1a0a0a");
+    bgGrad.addColorStop(1, "#2d0f0f");
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Grid
-    ctx.strokeStyle = "rgba(56,189,248,0.06)";
+    // Subtle grid
+    ctx.strokeStyle = "rgba(239,68,68,0.06)";
     ctx.lineWidth = 1;
     for (let i = 1; i < 6; i++) {
       const y = h - (h * i) / 6;
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
     }
 
-    // Curve
+    // Curve points
     const points: [number, number][] = [];
     const maxMult = Math.max(currentMult, 1.1);
     const steps = 150;
     for (let i = 0; i <= steps; i++) {
       const frac = i / steps;
-      const mult = 1 + (maxMult - 1) * Math.pow(frac, 1.5); // Slow start, accelerating
+      const mult = 1 + (maxMult - 1) * Math.pow(frac, 1.5);
       if (mult > currentMult) break;
       const x = frac * w * 0.88 + w * 0.06;
       const yNorm = (mult - 1) / Math.max(maxMult - 1, 0.1);
@@ -101,10 +130,10 @@ const AviatorPage = () => {
       const gradient = ctx.createLinearGradient(0, h, 0, 0);
       if (crashed) {
         gradient.addColorStop(0, "rgba(239,68,68,0.0)");
-        gradient.addColorStop(1, "rgba(239,68,68,0.15)");
+        gradient.addColorStop(1, "rgba(239,68,68,0.2)");
       } else {
-        gradient.addColorStop(0, "rgba(56,189,248,0.0)");
-        gradient.addColorStop(1, "rgba(56,189,248,0.2)");
+        gradient.addColorStop(0, "rgba(251,146,60,0.0)");
+        gradient.addColorStop(1, "rgba(251,146,60,0.15)");
       }
 
       ctx.beginPath();
@@ -115,7 +144,7 @@ const AviatorPage = () => {
       ctx.fillStyle = gradient;
       ctx.fill();
 
-      ctx.shadowColor = crashed ? "#ef4444" : "#38bdf8";
+      ctx.shadowColor = crashed ? "#ef4444" : "#fb923c";
       ctx.shadowBlur = 12;
       ctx.beginPath();
       ctx.moveTo(points[0][0], points[0][1]);
@@ -124,24 +153,23 @@ const AviatorPage = () => {
         const yc = (points[i - 1][1] + points[i][1]) / 2;
         ctx.quadraticCurveTo(points[i - 1][0], points[i - 1][1], xc, yc);
       }
-      ctx.strokeStyle = crashed ? "#ef4444" : "#38bdf8";
+      ctx.strokeStyle = crashed ? "#ef4444" : "#fb923c";
       ctx.lineWidth = 3;
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      // Plane emoji at tip
+      // Plane at tip
       const tip = points[points.length - 1];
       ctx.font = "28px serif";
-      ctx.fillStyle = crashed ? "#ef4444" : "#38bdf8";
       ctx.fillText(crashed ? "💥" : "✈️", tip[0] - 14, tip[1] + 8);
     }
 
-    // Central multiplier text
-    ctx.shadowColor = crashed ? "#ef4444" : "#38bdf8";
+    // Central multiplier
+    ctx.shadowColor = crashed ? "#ef4444" : "#fb923c";
     ctx.shadowBlur = 20;
     ctx.font = `bold ${crashed ? 42 : 50}px 'Inter', sans-serif`;
     ctx.textAlign = "center";
-    ctx.fillStyle = crashed ? "#ef4444" : "#38bdf8";
+    ctx.fillStyle = crashed ? "#ef4444" : "#fb923c";
     ctx.fillText(`${currentMult.toFixed(2)}x`, w / 2, h * 0.45);
     ctx.shadowBlur = 0;
 
@@ -159,16 +187,18 @@ const AviatorPage = () => {
     setPhase("flying");
     setMultiplier(1.0);
     startTimeRef.current = performance.now();
+    if (soundOn) playSound(220, 0.3, "sawtooth", 0.08);
 
     const animate = (time: number) => {
       const elapsed = (time - startTimeRef.current) / 1000;
-      // Slower growth: e^(0.12t) — more suspense
-      const currentMult = Math.pow(Math.E, elapsed * 0.12);
+      // Slower growth: e^(0.08t) for more suspense
+      const currentMult = Math.pow(Math.E, elapsed * 0.08);
 
       if (currentMult >= crashPointRef.current) {
         setMultiplier(crashPointRef.current);
         setPhase("crashed");
         drawGraph(crashPointRef.current, true);
+        if (soundOn) playSound(100, 0.5, "square", 0.12);
         return;
       }
 
@@ -177,7 +207,7 @@ const AviatorPage = () => {
       animationRef.current = requestAnimationFrame(animate);
     };
     animationRef.current = requestAnimationFrame(animate);
-  }, [drawGraph]);
+  }, [drawGraph, soundOn]);
 
   // Countdown & auto-start
   useEffect(() => {
@@ -217,16 +247,15 @@ const AviatorPage = () => {
   const handlePlaceBet = async () => {
     if (!user) { navigate("/auth"); return; }
     const amount = parseFloat(betAmount);
-    if (isNaN(amount) || amount < 10) { toast.error("Minimum bet is ₹10"); return; }
-    if (amount > balance) {
-      toast.error("Insufficient balance. Please deposit first.");
-      return;
-    }
+    if (isNaN(amount) || amount < 1) { toast.error("Minimum bet is ₹1"); return; }
+    if (amount > 30) { toast.error("Maximum bet is ₹30"); return; }
+    if (amount > balance) { toast.error("Insufficient balance"); return; }
 
     const result = await placeBet(user.id, amount, "Aviator Crash");
     if (!result.success) { toast.error(result.error || "Bet failed"); return; }
     setCurrentBet(amount);
     setBalance(result.newBalance || 0);
+    if (soundOn) playSound(440, 0.15, "sine", 0.1);
     toast.success(`Bet placed: ₹${amount}`);
   };
 
@@ -239,16 +268,19 @@ const AviatorPage = () => {
     setBalance(result.newBalance || 0);
     setHistory((prev) => [{ multiplier, crashed: false, bet: currentBet, won: winAmount }, ...prev.slice(0, 19)]);
     setPhase("cashed_out");
+    const betForSession = currentBet;
     setCurrentBet(0);
 
-    await supabase.from("game_sessions").insert({ user_id: user.id, game_id: "aviator", game_title: "Aviator Crash", bet_amount: currentBet, win_amount: winAmount, result: "win" });
+    if (soundOn) playSound(880, 0.3, "sine", 0.12);
+
+    await supabase.from("game_sessions").insert({ user_id: user.id, game_id: "aviator", game_title: "Aviator Crash", bet_amount: betForSession, win_amount: winAmount, result: "win" });
     toast.success(`Cashed out at ${multiplier.toFixed(2)}x — Won ₹${winAmount.toFixed(2)}!`);
     await refreshProfile();
 
     // Continue animation until crash
     const continueAnim = (time: number) => {
       const elapsed = (time - startTimeRef.current) / 1000;
-      const currentMult = Math.pow(Math.E, elapsed * 0.12);
+      const currentMult = Math.pow(Math.E, elapsed * 0.08);
       if (currentMult >= crashPointRef.current) {
         setMultiplier(crashPointRef.current);
         drawGraph(crashPointRef.current, true);
@@ -263,7 +295,7 @@ const AviatorPage = () => {
     animationRef.current = requestAnimationFrame(continueAnim);
   };
 
-  const quickBets = [10, 50, 100, 500];
+  const quickBets = [5, 10, 20, 25, 30];
 
   if (!user) {
     return (
@@ -278,7 +310,7 @@ const AviatorPage = () => {
     );
   }
 
-  const canPlaceBet = (phase === "waiting" || phase === "flying") && currentBet === 0 && balance >= 10;
+  const canPlaceBet = (phase === "waiting" || phase === "flying") && currentBet === 0 && balance >= 1;
   const canCashout = phase === "flying" && currentBet > 0;
 
   return (
@@ -293,9 +325,14 @@ const AviatorPage = () => {
             <p className="text-[10px] text-muted-foreground">FairClash Tournaments</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-1.5">
-          <Wallet className="h-3.5 w-3.5 text-primary" />
-          <span className="font-mono-num text-sm font-semibold">₹{balance.toFixed(2)}</span>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setSoundOn(!soundOn)} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground">
+            {soundOn ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+          </button>
+          <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-1.5">
+            <Wallet className="h-3.5 w-3.5 text-primary" />
+            <span className="font-mono-num text-sm font-semibold">₹{balance.toFixed(2)}</span>
+          </div>
         </div>
       </div>
 
@@ -305,14 +342,13 @@ const AviatorPage = () => {
       </button>
 
       {showRules && (
-        <div className="surface-card rounded-xl p-4 space-y-2 text-xs text-muted-foreground border-l-2 border-l-primary animate-fade-in">
+        <div className="surface-card rounded-xl p-4 space-y-2 text-xs text-muted-foreground border-l-2 border-l-destructive animate-fade-in">
           <p className="text-foreground font-medium text-sm">How to Play Aviator</p>
           <ul className="space-y-1 list-disc pl-4">
-            <li>Place your bet during countdown OR while the plane is flying</li>
-            <li>The multiplier starts at 1.00x and increases slowly, then faster</li>
+            <li>Place your bet (₹1–₹30) during countdown OR while the plane is flying</li>
+            <li>The multiplier starts at 1.00x and increases gradually</li>
             <li>Hit <strong>CASH OUT</strong> before the plane crashes to win your bet × multiplier</li>
             <li>If you don't cash out before the crash, you lose your bet</li>
-            <li>Minimum bet: ₹10 · Winnings added to wallet instantly</li>
             <li>Most rounds crash between 1.2x–3x. Big multipliers (5x+) are rare!</li>
           </ul>
         </div>
@@ -321,34 +357,34 @@ const AviatorPage = () => {
       {/* Live stats bar */}
       <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {fakePlayers} playing</span>
-        <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> ₹{fakeTotalBets.toLocaleString()} total bets</span>
+        <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> ₹{fakeTotalBets.toLocaleString()} pool</span>
         <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> {history.length} rounds</span>
       </div>
 
       {/* Game Canvas */}
-      <div className="relative rounded-xl overflow-hidden border border-border">
+      <div className="relative rounded-xl overflow-hidden border border-destructive/30">
         <canvas ref={canvasRef} className="w-full aspect-[16/9]" />
 
         {phase === "waiting" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a1628]/90 backdrop-blur-sm">
-            <Plane className="h-10 w-10 text-primary animate-bounce mb-3" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1a0a0a]/90 backdrop-blur-sm">
+            <Plane className="h-10 w-10 text-destructive animate-bounce mb-3" />
             <p className="text-sm text-muted-foreground">Next round in</p>
-            <p className="text-5xl font-bold text-primary font-mono-num">{countdown}s</p>
+            <p className="text-5xl font-bold text-destructive font-mono-num">{countdown}s</p>
             <p className="text-[10px] text-muted-foreground mt-2">Place your bet now!</p>
           </div>
         )}
 
         {phase === "cashed_out" && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-success/90 text-success-foreground px-4 py-2 rounded-lg text-sm font-bold glow-success">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-success/90 text-success-foreground px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-success/30">
             ✓ Cashed Out!
           </div>
         )}
       </div>
 
-      {/* CASHOUT BUTTON - prominent when active */}
+      {/* CASHOUT BUTTON - large, glowing, prominent */}
       {canCashout && (
         <button onClick={handleCashout}
-          className="w-full h-14 rounded-xl bg-success text-success-foreground text-lg font-bold animate-pulse-glow flex items-center justify-center gap-2 transition-all active:scale-95">
+          className="w-full h-16 rounded-xl bg-gradient-to-r from-success to-emerald-500 text-white text-xl font-bold shadow-lg shadow-success/40 flex items-center justify-center gap-3 transition-all active:scale-95 animate-pulse">
           💰 CASH OUT — ₹{(currentBet * multiplier).toFixed(0)}
         </button>
       )}
@@ -378,12 +414,12 @@ const AviatorPage = () => {
       </div>
 
       {/* Insufficient balance warning */}
-      {balance < 10 && (
+      {balance < 1 && (
         <div className="surface-card rounded-xl p-3 flex items-center gap-2 border-l-2 border-l-warning animate-fade-in">
           <AlertCircle className="h-4 w-4 text-warning flex-shrink-0" />
           <div className="flex-1">
             <p className="text-xs text-warning font-medium">Insufficient balance</p>
-            <p className="text-[10px] text-muted-foreground">Minimum ₹10 required to play</p>
+            <p className="text-[10px] text-muted-foreground">Minimum ₹1 required to play</p>
           </div>
           <Link to="/wallet" className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[10px] font-medium flex items-center">Deposit</Link>
         </div>
@@ -393,15 +429,15 @@ const AviatorPage = () => {
       <div className="surface-card rounded-xl p-4 space-y-3">
         <div className="flex gap-2">
           <div className="flex-1">
-            <label className="text-[10px] text-muted-foreground font-medium mb-1 block">Bet Amount (₹)</label>
-            <input type="number" min={10} value={betAmount} onChange={(e) => setBetAmount(e.target.value)} placeholder="Min ₹10"
+            <label className="text-[10px] text-muted-foreground font-medium mb-1 block">Bet Amount (₹1–₹30)</label>
+            <input type="number" min={1} max={30} value={betAmount} onChange={(e) => setBetAmount(e.target.value)} placeholder="Min ₹1"
               disabled={currentBet > 0}
-              className="w-full h-10 rounded-lg bg-background border border-border px-3 text-sm font-mono-num focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50" />
+              className="w-full h-10 rounded-lg bg-background border border-border px-3 text-sm font-mono-num focus:outline-none focus:ring-1 focus:ring-destructive disabled:opacity-50" />
           </div>
           <div className="flex flex-col justify-end">
             <button onClick={handlePlaceBet}
               disabled={!canPlaceBet}
-              className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-bold disabled:opacity-50 whitespace-nowrap">
+              className="h-10 px-6 rounded-lg bg-destructive text-destructive-foreground text-sm font-bold disabled:opacity-50 whitespace-nowrap shadow-lg shadow-destructive/20">
               {currentBet > 0 ? `Bet: ₹${currentBet}` : "Place Bet"}
             </button>
           </div>
@@ -409,7 +445,7 @@ const AviatorPage = () => {
         <div className="flex gap-2">
           {quickBets.map((qb) => (
             <button key={qb} onClick={() => setBetAmount(String(qb))} disabled={currentBet > 0}
-              className="flex-1 h-8 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-accent disabled:opacity-50 transition-colors">
+              className="flex-1 h-8 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-destructive/10 hover:text-destructive disabled:opacity-50 transition-colors">
               ₹{qb}
             </button>
           ))}

@@ -26,7 +26,7 @@ const HomePage = () => {
 
       const activeNotices = (noticesRes.data || []).filter((n: any) => !n.expiry_at || new Date(n.expiry_at) > new Date());
       setNotices(activeNotices);
-      setStats({ games: (gamesRes.data?.length || 0) + 1, tournaments: tournamentsRes.data?.length || 0 });
+      setStats({ games: (gamesRes.data?.length || 0) + 2, tournaments: tournamentsRes.data?.length || 0 });
 
       // Most played aggregation
       const counts: Record<string, number> = {};

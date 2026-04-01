@@ -497,7 +497,10 @@ const AdminPage = () => {
             <form onSubmit={handleAddTournament} className="surface-card rounded-lg p-4 space-y-3">
               <input type="text" placeholder="Tournament Title" value={tTitle} onChange={(e) => setTTitle(e.target.value)} required className="w-full h-10 rounded-lg bg-background border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
               <select value={tGameId} onChange={(e) => setTGameId(e.target.value)} required className="w-full h-10 rounded-lg bg-background border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
-                <option value="">Select Game</option>{games.filter((g) => g.tournament_enabled).map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+                <option value="">Select Game</option>
+                <option value="aviator">⭐ Aviator Crash</option>
+                <option value="ludo-clash">⭐ Ludo Clash</option>
+                {games.map((g) => <option key={g.id} value={g.id}>{g.title}{g.tournament_enabled ? " (Tournament)" : ""}</option>)}
               </select>
               <div className="grid grid-cols-3 gap-3">
                 <input type="number" placeholder="Entry Fee" value={tEntryFee} onChange={(e) => setTEntryFee(e.target.value)} required className="h-10 rounded-lg bg-background border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
