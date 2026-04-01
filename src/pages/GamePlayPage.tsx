@@ -86,7 +86,7 @@ const GamePlayPage = () => {
   if (!game) return <div className="flex items-center justify-center h-[80vh] text-sm text-muted-foreground">Game not found</div>;
 
   const gameUrl = game.game_file_url
-    ? supabase.storage.from("game-files").getPublicUrl(game.game_file_url).data.publicUrl
+    ? supabase.storage.from("game-files").getPublicUrl(game.game_file_url).data.publicUrl + `?t=${Date.now()}`
     : null;
 
   if (!gameUrl) return <div className="flex items-center justify-center h-[80vh] text-sm text-muted-foreground">No game file available</div>;
