@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useNavigate } from "react-router-dom";
 import aviatorLogo from "@/assets/aviator-logo.jpg";
+import ludoClashLogo from "@/assets/ludo-clash-logo.jpg";
 
 const GamesPage = () => {
   const [games, setGames] = useState<any[]>([]);
@@ -48,14 +49,12 @@ const GamesPage = () => {
         </div>
       </Link>
 
-      {/* Built-in Ludo */}
+      {/* Built-in Ludo Clash */}
       <Link to="/ludo" className="block surface-card rounded-xl overflow-hidden group hover:border-primary/30 transition-all">
         <div className="flex items-center gap-4 p-4">
-          <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Dice5 className="h-8 w-8 text-primary" />
-          </div>
+          <img src={ludoClashLogo} alt="Ludo Clash" className="h-14 w-14 rounded-xl object-cover" />
           <div className="flex-1">
-            <p className="text-sm font-bold flex items-center gap-1.5"><Dice5 className="h-4 w-4 text-primary" /> Ludo Multiplayer</p>
+            <p className="text-sm font-bold flex items-center gap-1.5"><Dice5 className="h-4 w-4 text-primary" /> Ludo Clash</p>
             <p className="text-xs text-muted-foreground mt-0.5">Classic board game — 2 or 4 players!</p>
             <div className="flex gap-1 mt-1.5">
               <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">Multiplayer</span>

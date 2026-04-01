@@ -86,7 +86,7 @@ const GamePlayPage = () => {
   if (!game) return <div className="flex items-center justify-center h-[80vh] text-sm text-muted-foreground">Game not found</div>;
 
   const gameUrl = game.game_file_url
-    ? supabase.storage.from("game-files").getPublicUrl(game.game_file_url).data.publicUrl
+    ? supabase.storage.from("game-files").getPublicUrl(game.game_file_url).data.publicUrl + `?t=${Date.now()}`
     : null;
 
   if (!gameUrl) return <div className="flex items-center justify-center h-[80vh] text-sm text-muted-foreground">No game file available</div>;
@@ -128,9 +128,11 @@ const GamePlayPage = () => {
           ref={iframeRef}
           src={gameUrl}
           className="w-full h-full border-0"
-          sandbox="allow-scripts allow-same-origin allow-popups"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+          allow="autoplay; fullscreen"
           title={game.title}
           onLoad={() => setIframeLoading(false)}
+          onError={() => { setIframeLoading(false); toast.error("Failed to load game"); }}
         />
       </div>
 

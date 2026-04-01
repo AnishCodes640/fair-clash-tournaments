@@ -6,11 +6,12 @@ import { placeBet, addWinnings, getWalletBalance } from "@/lib/walletApi";
 import {
   rollDice, getValidMoves, movePiece, createInitialState,
   PLAYER_COLORS, PLAYER_LABELS, getBoardPosition, getHomeStretchPosition, getYardPosition,
-  type LudoState, type PiecePosition,
+  type LudoState,
 } from "@/lib/ludoEngine";
 import { ArrowLeft, Wallet, Users, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Trophy, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import ludoClashLogo from "@/assets/ludo-clash-logo.jpg";
 
 type Screen = "lobby" | "matchmaking" | "game" | "result";
 
@@ -42,6 +43,27 @@ const LudoPage = () => {
     if (profile) setBalance(Number(profile.wallet_balance || 0));
   }, [profile]);
 
+  // Cleanup stale sessions on mount
+  useEffect(() => {
+    if (!user) return;
+    const cleanup = async () => {
+      // Remove this user from any waiting rooms they might be stuck in
+      const { data: staleEntries } = await supabase
+        .from("ludo_players")
+        .select("id, room_id")
+        .eq("user_id", user.id);
+      if (staleEntries && staleEntries.length > 0) {
+        for (const entry of staleEntries) {
+          const { data: room } = await supabase.from("ludo_rooms").select("status").eq("id", entry.room_id).single();
+          if (room?.status === "waiting" || room?.status === "finished") {
+            await supabase.from("ludo_players").delete().eq("id", entry.id);
+          }
+        }
+      }
+    };
+    cleanup();
+  }, [user]);
+
   // Subscribe to room changes
   useEffect(() => {
     if (!roomId) return;
@@ -49,9 +71,6 @@ const LudoPage = () => {
     const channel = supabase.channel(`ludo-${roomId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "ludo_rooms", filter: `id=eq.${roomId}` }, (payload: any) => {
         const room = payload.new;
-        if (room?.status === "finished" && room.winner_id) {
-          // Game ended
-        }
         if (room?.board_state && Object.keys(room.board_state).length > 0) {
           const bs = room.board_state as any;
           if (bs.pieces) {
@@ -71,7 +90,6 @@ const LudoPage = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "ludo_players", filter: `room_id=eq.${roomId}` }, async () => {
         const { data } = await supabase.from("ludo_players").select("*").eq("room_id", roomId).order("player_index");
         if (data) setPlayers(data);
-        // Check if game should start
         const maxPlayers = mode === "2p" ? 2 : 4;
         if (data && data.length >= maxPlayers) {
           const { data: room } = await supabase.from("ludo_rooms").select("status").eq("id", roomId).single();
@@ -92,6 +110,17 @@ const LudoPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [roomId, mode]);
 
+  // Cleanup on unmount / cancel
+  const leaveRoom = useCallback(async () => {
+    if (roomId && user) {
+      await supabase.from("ludo_players").delete().eq("room_id", roomId).eq("user_id", user.id);
+      // If room is now empty, could clean up but we'll let it be
+    }
+    setRoomId(null);
+    setPlayers([]);
+    setScreen("lobby");
+  }, [roomId, user]);
+
   const findOrCreateRoom = async () => {
     if (!user || !profile) { navigate("/auth"); return; }
 
@@ -102,6 +131,20 @@ const LudoPage = () => {
 
     setScreen("matchmaking");
     const maxPlayers = mode === "2p" ? 2 : 4;
+
+    // Clean up any existing entries for this user in waiting rooms
+    const { data: existingEntries } = await supabase
+      .from("ludo_players")
+      .select("id, room_id")
+      .eq("user_id", user.id);
+    if (existingEntries) {
+      for (const entry of existingEntries) {
+        const { data: room } = await supabase.from("ludo_rooms").select("status").eq("id", entry.room_id).single();
+        if (room?.status === "waiting") {
+          await supabase.from("ludo_players").delete().eq("id", entry.id);
+        }
+      }
+    }
 
     // Find existing waiting room
     const { data: rooms } = await supabase
@@ -119,7 +162,6 @@ const LudoPage = () => {
       for (const room of rooms) {
         const playerCount = (room as any).ludo_players?.[0]?.count || 0;
         if (playerCount < maxPlayers) {
-          // Check not already in this room
           const { data: existing } = await supabase.from("ludo_players")
             .select("id").eq("room_id", room.id).eq("user_id", user.id).single();
           if (!existing) {
@@ -131,7 +173,6 @@ const LudoPage = () => {
     }
 
     if (!targetRoom) {
-      // Create new room
       const prizePool = entryFee * maxPlayers;
       const { data: newRoom } = await supabase.from("ludo_rooms").insert([{
         mode, entry_fee: entryFee, prize_pool: prizePool,
@@ -143,7 +184,7 @@ const LudoPage = () => {
 
     // Deduct entry fee
     if (entryFee > 0) {
-      const betResult = await placeBet(user.id, entryFee, "Ludo");
+      const betResult = await placeBet(user.id, entryFee, "Ludo Clash");
       if (!betResult.success) { toast.error(betResult.error || "Failed to deduct entry fee"); setScreen("lobby"); return; }
       setBalance(betResult.newBalance || 0);
     }
@@ -164,7 +205,6 @@ const LudoPage = () => {
     setRoomId(targetRoom);
     setMyPlayerIndex(myIndex);
 
-    // Load current players
     const { data: allPlayers } = await supabase.from("ludo_players")
       .select("*").eq("room_id", targetRoom).order("player_index");
     setPlayers(allPlayers || []);
@@ -182,7 +222,6 @@ const LudoPage = () => {
     setRolling(true);
     const dice = rollDice();
 
-    // Animate dice
     await new Promise(r => setTimeout(r, 600));
     setDiceValue(dice);
     setRolling(false);
@@ -191,7 +230,6 @@ const LudoPage = () => {
     const moves = getValidMoves(gameState, myPlayerIndex, dice);
     if (moves.length === 0) {
       toast("No valid moves! Turn passes.", { icon: "⏭️" });
-      // Pass turn
       const nextTurn = (myPlayerIndex + 1) % gameState.pieces.length;
       await supabase.from("ludo_rooms").update({
         current_turn: nextTurn,
@@ -214,7 +252,6 @@ const LudoPage = () => {
       toast("Piece captured! 💀", { icon: "⚔️" });
     }
 
-    // Update room state
     const newBoardState = JSON.parse(JSON.stringify({
       pieces: result.newState.pieces,
       winner: result.newState.winner,
@@ -237,11 +274,26 @@ const LudoPage = () => {
     // Handle win
     if (result.newState.winner !== null) {
       const winnerPlayer = players[result.newState.winner];
-      if (winnerPlayer?.user_id === user?.id && entryFee > 0) {
-        const prizePool = entryFee * players.length;
-        const winResult = await addWinnings(user!.id, prizePool, "Ludo");
-        if (winResult.success) setBalance(winResult.newBalance || 0);
-        toast.success(`You won ₹${prizePool}! 🏆`);
+      if (winnerPlayer?.user_id === user?.id) {
+        if (entryFee > 0) {
+          const prizePool = entryFee * players.length;
+          const winResult = await addWinnings(user!.id, prizePool, "Ludo Clash");
+          if (winResult.success) setBalance(winResult.newBalance || 0);
+          toast.success(`You won ₹${prizePool}! 🏆`);
+        }
+        // Record game session
+        await supabase.from("game_sessions").insert({
+          user_id: user!.id, game_id: "ludo-clash", game_title: "Ludo Clash",
+          bet_amount: entryFee, win_amount: entryFee * players.length, result: "win",
+        });
+      } else {
+        // Record loss
+        if (user) {
+          await supabase.from("game_sessions").insert({
+            user_id: user.id, game_id: "ludo-clash", game_title: "Ludo Clash",
+            bet_amount: entryFee, win_amount: 0, result: "loss",
+          });
+        }
       }
       setWinner(winnerPlayer?.username || "Unknown");
       setScreen("result");
@@ -259,7 +311,8 @@ const LudoPage = () => {
   if (!user) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 text-center animate-fade-in">
-        <h2 className="text-lg font-bold mb-2">Ludo Multiplayer</h2>
+        <img src={ludoClashLogo} alt="Ludo Clash" className="h-20 w-20 rounded-2xl object-cover mx-auto mb-4" />
+        <h2 className="text-lg font-bold mb-2">Ludo Clash</h2>
         <p className="text-sm text-muted-foreground mb-4">Sign in to play</p>
         <button onClick={() => navigate("/auth")} className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Sign In</button>
       </div>
@@ -272,7 +325,11 @@ const LudoPage = () => {
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/games")} className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></button>
-          <h1 className="text-xl font-bold">Ludo Multiplayer</h1>
+          <img src={ludoClashLogo} alt="Ludo Clash" className="h-10 w-10 rounded-xl object-cover" />
+          <div>
+            <h1 className="text-xl font-bold">Ludo Clash</h1>
+            <p className="text-[10px] text-muted-foreground">FairClash Tournaments</p>
+          </div>
         </div>
 
         <div className="surface-card rounded-xl p-5 space-y-4">
@@ -324,6 +381,7 @@ const LudoPage = () => {
   if (screen === "matchmaking") {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center space-y-6 animate-fade-in">
+        <img src={ludoClashLogo} alt="Ludo Clash" className="h-16 w-16 rounded-2xl object-cover mx-auto" />
         <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
         <h2 className="text-lg font-bold">Finding Players...</h2>
         <p className="text-sm text-muted-foreground">{players.length}/{maxPlayers} joined</p>
@@ -344,8 +402,8 @@ const LudoPage = () => {
           })}
         </div>
 
-        <button onClick={() => { setScreen("lobby"); setRoomId(null); }}
-          className="text-xs text-muted-foreground hover:text-foreground underline">Cancel</button>
+        <button onClick={leaveRoom}
+          className="text-xs text-destructive hover:text-foreground underline">Cancel & Leave</button>
       </div>
     );
   }
@@ -376,7 +434,10 @@ const LudoPage = () => {
         <button onClick={() => navigate("/games")} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="text-sm font-bold">Ludo</h1>
+        <div className="flex items-center gap-2">
+          <img src={ludoClashLogo} alt="Ludo Clash" className="h-6 w-6 rounded-md object-cover" />
+          <h1 className="text-sm font-bold">Ludo Clash</h1>
+        </div>
         {entryFee > 0 && (
           <div className="flex items-center gap-1 text-xs">
             <Wallet className="h-3 w-3 text-primary" />
@@ -399,9 +460,7 @@ const LudoPage = () => {
 
       {/* Board */}
       <div className="relative w-full aspect-square max-w-[400px] mx-auto bg-card rounded-xl border border-border overflow-hidden">
-        {/* Grid background */}
         <svg viewBox="0 0 100 100" className="w-full h-full">
-          {/* Board background */}
           <rect x="0" y="0" width="100" height="100" fill="hsl(var(--card))" />
 
           {/* Player home areas */}
@@ -423,7 +482,6 @@ const LudoPage = () => {
               if (pos === -1) {
                 coord = getYardPosition(pIdx, pieceIdx);
               } else if (pos === 200) {
-                // Finished — show in center
                 coord = { x: 6.5 + pieceIdx * 0.7, y: 7 };
               } else if (pos >= 100) {
                 coord = getHomeStretchPosition(pIdx, pos);
