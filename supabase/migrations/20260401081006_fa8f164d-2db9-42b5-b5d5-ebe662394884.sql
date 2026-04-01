@@ -1,0 +1,1 @@
+CREATE POLICY "Players can delete own entries" ON public.ludo_players FOR DELETE TO authenticated USING (auth.uid() = user_id);

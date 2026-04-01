@@ -47,7 +47,6 @@ const App = () => (
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/ludo" element={<LudoPage />} />
                 <Route path="/rules" element={<RulesPage />} />
-                <Route path="/rules" element={<RulesPage />} />
               </Route>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<NotFound />} />

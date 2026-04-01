@@ -128,9 +128,11 @@ const GamePlayPage = () => {
           ref={iframeRef}
           src={gameUrl}
           className="w-full h-full border-0"
-          sandbox="allow-scripts allow-same-origin allow-popups"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+          allow="autoplay; fullscreen"
           title={game.title}
           onLoad={() => setIframeLoading(false)}
+          onError={() => { setIframeLoading(false); toast.error("Failed to load game"); }}
         />
       </div>
 
