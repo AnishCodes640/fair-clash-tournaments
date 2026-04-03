@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { placeBet, addWinnings, getWalletBalance } from "@/lib/walletApi";
 import {
   rollDice, getValidMoves, movePiece, createInitialState,
-  PLAYER_COLORS, PLAYER_LABELS, getBoardPosition, getHomeStretchPosition, getYardPosition,
+  PLAYER_COLORS, PLAYER_LABELS,
   type LudoState,
 } from "@/lib/ludoEngine";
 import { ArrowLeft, Wallet, Users, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Trophy, Loader2 } from "lucide-react";
@@ -17,8 +17,105 @@ type Screen = "lobby" | "matchmaking" | "game" | "result";
 
 const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
 
+// Sound effects
+const audioCtx = typeof AudioContext !== "undefined" ? new AudioContext() : null;
+function playSound(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.12) {
+  if (!audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type; osc.frequency.value = freq; gain.gain.value = vol;
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.stop(audioCtx.currentTime + dur);
+  } catch {}
+}
+
+// Board rendering helpers — maps piece state to SVG coordinates on a 15x15 grid
+// Based on standard Ludo board layout (reference image: green top-left, yellow top-right, blue bottom-right, red bottom-left)
+const CELL = 100 / 15;
+
+// Main path coordinates (52 cells around the board)
+const MAIN_PATH: [number, number][] = [
+  // Red start (bottom): pos 0-5 going up column 6
+  [6,13],[6,12],[6,11],[6,10],[6,9],[6,8],
+  // Turn left: pos 6
+  [5,8],
+  // Left arm: pos 7-11 going left row 8, then up
+  [4,8],[3,8],[2,8],[1,8],[0,8],
+  // Corner turn: pos 12
+  [0,7],
+  // Left top: pos 13-17 going right row 6
+  [0,6],[1,6],[2,6],[3,6],[4,6],
+  // Turn up: pos 18
+  [5,6],
+  // Top arm: pos 19-23 going up column 6
+  [6,5],[6,4],[6,3],[6,2],[6,1],
+  // Corner: pos 24
+  [6,0],
+  // Top right: pos 25
+  [7,0],
+  // Turn: pos 26-30 going down
+  [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],
+  // Turn right: pos 32
+  [9,6],
+  // Right arm: pos 33-37
+  [10,6],[11,6],[12,6],[13,6],[14,6],
+  // Corner: pos 38
+  [14,7],
+  // Right bottom: pos 39-43
+  [14,8],[13,8],[12,8],[11,8],[10,8],
+  // Turn down: pos 44
+  [9,8],
+  // Bottom arm: pos 45-49
+  [8,9],[8,10],[8,11],[8,12],[8,13],
+  // Corner: pos 50
+  [8,14],
+  // Back to start: pos 51
+  [7,14],
+];
+
+// Home stretch positions for each player (6 cells leading to center)
+const HOME_STRETCHES: Record<number, [number, number][]> = {
+  0: [[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]], // Red: bottom center going up
+  1: [[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],     // Green: left center going right
+  2: [[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]],     // Yellow: top center going down
+  3: [[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]], // Blue: right center going left
+};
+
+// Yard positions (home base for each player)
+const YARDS: Record<number, [number, number][]> = {
+  0: [[2,11],[4,11],[2,13],[4,13]],   // Red: bottom-left
+  1: [[2,1],[4,1],[2,3],[4,3]],       // Green: top-left
+  2: [[10,1],[12,1],[10,3],[12,3]],   // Yellow: top-right
+  3: [[10,11],[12,11],[10,13],[12,13]],// Blue: bottom-right
+};
+
+function getPieceXY(playerIdx: number, pos: number, pieceIdx: number): [number, number] {
+  if (pos === -1) {
+    const [gx, gy] = YARDS[playerIdx]?.[pieceIdx] || [7, 7];
+    return [gx * CELL + CELL / 2, gy * CELL + CELL / 2];
+  }
+  if (pos === 200) {
+    // Finished — cluster near center
+    const offsets = [[6.8, 6.8], [7.2, 6.8], [6.8, 7.2], [7.2, 7.2]];
+    const [ox, oy] = offsets[pieceIdx] || [7, 7];
+    return [ox * CELL + CELL / 2, oy * CELL + CELL / 2];
+  }
+  if (pos >= 100) {
+    const stretchIdx = pos - 100;
+    const coords = HOME_STRETCHES[playerIdx]?.[stretchIdx];
+    if (coords) return [coords[0] * CELL + CELL / 2, coords[1] * CELL + CELL / 2];
+    return [50, 50];
+  }
+  // Main board
+  const coords = MAIN_PATH[pos % 52];
+  if (coords) return [coords[0] * CELL + CELL / 2, coords[1] * CELL + CELL / 2];
+  return [50, 50];
+}
+
 const LudoPage = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [screen, setScreen] = useState<Screen>("lobby");
   const [mode, setMode] = useState<"2p" | "4p">("2p");
@@ -38,7 +135,6 @@ const LudoPage = () => {
   useEffect(() => {
     if (user) getWalletBalance(user.id).then(setBalance);
   }, [user]);
-
   useEffect(() => {
     if (profile) setBalance(Number(profile.wallet_balance || 0));
   }, [profile]);
@@ -47,12 +143,9 @@ const LudoPage = () => {
   useEffect(() => {
     if (!user) return;
     const cleanup = async () => {
-      // Remove this user from any waiting rooms they might be stuck in
       const { data: staleEntries } = await supabase
-        .from("ludo_players")
-        .select("id, room_id")
-        .eq("user_id", user.id);
-      if (staleEntries && staleEntries.length > 0) {
+        .from("ludo_players").select("id, room_id").eq("user_id", user.id);
+      if (staleEntries) {
         for (const entry of staleEntries) {
           const { data: room } = await supabase.from("ludo_rooms").select("status").eq("id", entry.room_id).single();
           if (room?.status === "waiting" || room?.status === "finished") {
@@ -62,6 +155,12 @@ const LudoPage = () => {
       }
     };
     cleanup();
+    return () => {
+      // Also cleanup on unmount
+      if (roomId && user) {
+        supabase.from("ludo_players").delete().eq("room_id", roomId).eq("user_id", user.id);
+      }
+    };
   }, [user]);
 
   // Subscribe to room changes
@@ -71,7 +170,7 @@ const LudoPage = () => {
     const channel = supabase.channel(`ludo-${roomId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "ludo_rooms", filter: `id=eq.${roomId}` }, (payload: any) => {
         const room = payload.new;
-        if (room?.board_state && Object.keys(room.board_state).length > 0) {
+        if (room?.board_state && typeof room.board_state === "object") {
           const bs = room.board_state as any;
           if (bs.pieces) {
             setGameState(prev => ({
@@ -85,22 +184,26 @@ const LudoPage = () => {
             setDiceValue(room.dice_value);
             setValidMoves([]);
           }
+          if (room.status === "playing" && screen === "matchmaking") {
+            setScreen("game");
+          }
         }
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "ludo_players", filter: `room_id=eq.${roomId}` }, async () => {
         const { data } = await supabase.from("ludo_players").select("*").eq("room_id", roomId).order("player_index");
         if (data) setPlayers(data);
-        const maxPlayers = mode === "2p" ? 2 : 4;
-        if (data && data.length >= maxPlayers) {
+        const maxP = mode === "2p" ? 2 : 4;
+        if (data && data.length >= maxP) {
           const { data: room } = await supabase.from("ludo_rooms").select("status").eq("id", roomId).single();
           if (room?.status === "waiting") {
+            const initState = createInitialState(maxP);
             await supabase.from("ludo_rooms").update({
               status: "playing",
-              board_state: JSON.parse(JSON.stringify(createInitialState(maxPlayers))),
+              board_state: JSON.parse(JSON.stringify(initState)),
               current_turn: 0,
             }).eq("id", roomId);
             setScreen("game");
-            setGameState(createInitialState(maxPlayers));
+            setGameState(initState);
           }
         }
       })
@@ -108,75 +211,57 @@ const LudoPage = () => {
 
     channelRef.current = channel;
     return () => { supabase.removeChannel(channel); };
-  }, [roomId, mode]);
+  }, [roomId, mode, screen]);
 
-  // Cleanup on unmount / cancel
   const leaveRoom = useCallback(async () => {
     if (roomId && user) {
       await supabase.from("ludo_players").delete().eq("room_id", roomId).eq("user_id", user.id);
-      // If room is now empty, could clean up but we'll let it be
     }
-    setRoomId(null);
-    setPlayers([]);
-    setScreen("lobby");
+    setRoomId(null); setPlayers([]); setScreen("lobby");
   }, [roomId, user]);
 
   const findOrCreateRoom = async () => {
     if (!user || !profile) { navigate("/auth"); return; }
-
-    if (entryFee > 0 && balance < entryFee) {
-      toast.error("Insufficient balance for entry fee");
-      return;
-    }
+    if (entryFee > 0 && balance < entryFee) { toast.error("Insufficient balance"); return; }
 
     setScreen("matchmaking");
-    const maxPlayers = mode === "2p" ? 2 : 4;
+    const maxP = mode === "2p" ? 2 : 4;
 
-    // Clean up any existing entries for this user in waiting rooms
-    const { data: existingEntries } = await supabase
-      .from("ludo_players")
-      .select("id, room_id")
-      .eq("user_id", user.id);
-    if (existingEntries) {
-      for (const entry of existingEntries) {
+    // Clean up existing entries
+    const { data: existing } = await supabase.from("ludo_players").select("id, room_id").eq("user_id", user.id);
+    if (existing) {
+      for (const entry of existing) {
         const { data: room } = await supabase.from("ludo_rooms").select("status").eq("id", entry.room_id).single();
-        if (room?.status === "waiting") {
+        if (room?.status === "waiting" || room?.status === "finished") {
           await supabase.from("ludo_players").delete().eq("id", entry.id);
         }
       }
     }
 
-    // Find existing waiting room
+    // Find waiting room with space
     const { data: rooms } = await supabase
       .from("ludo_rooms")
       .select("*, ludo_players(count)")
-      .eq("mode", mode)
-      .eq("status", "waiting")
-      .eq("entry_fee", entryFee)
-      .order("created_at", { ascending: true })
-      .limit(5);
+      .eq("mode", mode).eq("status", "waiting").eq("entry_fee", entryFee)
+      .order("created_at", { ascending: true }).limit(10);
 
     let targetRoom: string | null = null;
-
-    if (rooms && rooms.length > 0) {
+    if (rooms) {
       for (const room of rooms) {
-        const playerCount = (room as any).ludo_players?.[0]?.count || 0;
-        if (playerCount < maxPlayers) {
-          const { data: existing } = await supabase.from("ludo_players")
+        const count = (room as any).ludo_players?.[0]?.count || 0;
+        if (count < maxP) {
+          // Verify user isn't already in this room
+          const { data: alreadyIn } = await supabase.from("ludo_players")
             .select("id").eq("room_id", room.id).eq("user_id", user.id).single();
-          if (!existing) {
-            targetRoom = room.id;
-            break;
-          }
+          if (!alreadyIn) { targetRoom = room.id; break; }
         }
       }
     }
 
     if (!targetRoom) {
-      const prizePool = entryFee * maxPlayers;
       const { data: newRoom } = await supabase.from("ludo_rooms").insert([{
-        mode, entry_fee: entryFee, prize_pool: prizePool,
-        board_state: JSON.parse(JSON.stringify(createInitialState(maxPlayers))),
+        mode, entry_fee: entryFee, prize_pool: entryFee * maxP,
+        board_state: JSON.parse(JSON.stringify(createInitialState(maxP))),
       }]).select("id").single();
       if (!newRoom) { toast.error("Failed to create room"); setScreen("lobby"); return; }
       targetRoom = newRoom.id;
@@ -210,9 +295,7 @@ const LudoPage = () => {
     setPlayers(allPlayers || []);
 
     const { data: roomData } = await supabase.from("ludo_rooms").select("status").eq("id", targetRoom).single();
-    if (roomData?.status === "playing") {
-      setScreen("game");
-    }
+    if (roomData?.status === "playing") setScreen("game");
   };
 
   const handleRollDice = async () => {
@@ -220,20 +303,21 @@ const LudoPage = () => {
     if (gameState.currentTurn !== myPlayerIndex) return;
 
     setRolling(true);
+    playSound(300, 0.15, "square", 0.08);
     const dice = rollDice();
 
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 500));
     setDiceValue(dice);
     setRolling(false);
     setDiceRolled(true);
+    playSound(500 + dice * 50, 0.2, "sine", 0.1);
 
     const moves = getValidMoves(gameState, myPlayerIndex, dice);
     if (moves.length === 0) {
       toast("No valid moves! Turn passes.", { icon: "⏭️" });
       const nextTurn = (myPlayerIndex + 1) % gameState.pieces.length;
       await supabase.from("ludo_rooms").update({
-        current_turn: nextTurn,
-        dice_value: dice,
+        current_turn: nextTurn, dice_value: dice,
         board_state: JSON.parse(JSON.stringify({ ...gameState, currentTurn: nextTurn, diceValue: dice })),
       }).eq("id", roomId);
       setDiceRolled(false);
@@ -246,10 +330,12 @@ const LudoPage = () => {
     if (!roomId || !diceRolled || diceValue === null) return;
     if (!validMoves.includes(pieceIndex)) return;
 
+    playSound(600, 0.1, "sine", 0.08);
     const result = movePiece(gameState, myPlayerIndex, pieceIndex, diceValue);
 
     if (result.killed) {
       toast("Piece captured! 💀", { icon: "⚔️" });
+      playSound(200, 0.3, "sawtooth", 0.1);
     }
 
     const newBoardState = JSON.parse(JSON.stringify({
@@ -271,9 +357,9 @@ const LudoPage = () => {
     setDiceRolled(false);
     setValidMoves([]);
 
-    // Handle win
     if (result.newState.winner !== null) {
       const winnerPlayer = players[result.newState.winner];
+      playSound(880, 0.5, "sine", 0.15);
       if (winnerPlayer?.user_id === user?.id) {
         if (entryFee > 0) {
           const prizePool = entryFee * players.length;
@@ -281,13 +367,12 @@ const LudoPage = () => {
           if (winResult.success) setBalance(winResult.newBalance || 0);
           toast.success(`You won ₹${prizePool}! 🏆`);
         }
-        // Record game session
         await supabase.from("game_sessions").insert({
           user_id: user!.id, game_id: "ludo-clash", game_title: "Ludo Clash",
           bet_amount: entryFee, win_amount: entryFee * players.length, result: "win",
         });
+        await refreshProfile();
       } else {
-        // Record loss
         if (user) {
           await supabase.from("game_sessions").insert({
             user_id: user.id, game_id: "ludo-clash", game_title: "Ludo Clash",
@@ -326,10 +411,7 @@ const LudoPage = () => {
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/games")} className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></button>
           <img src={ludoClashLogo} alt="Ludo Clash" className="h-10 w-10 rounded-xl object-cover" />
-          <div>
-            <h1 className="text-xl font-bold">Ludo Clash</h1>
-            <p className="text-[10px] text-muted-foreground">FairClash Tournaments</p>
-          </div>
+          <div><h1 className="text-xl font-bold">Ludo Clash</h1><p className="text-[10px] text-muted-foreground">FairClash Tournaments</p></div>
         </div>
 
         <div className="surface-card rounded-xl p-5 space-y-4">
@@ -360,16 +442,12 @@ const LudoPage = () => {
           </div>
           {entryFee > 0 && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Wallet className="h-3 w-3" />
-              <span>Balance: ₹{balance.toFixed(0)}</span>
-              <span>•</span>
-              <span className="text-primary font-medium">Prize: ₹{entryFee * maxPlayers}</span>
+              <Wallet className="h-3 w-3" /> Balance: ₹{balance.toFixed(0)} • <span className="text-primary font-medium">Prize: ₹{entryFee * maxPlayers}</span>
             </div>
           )}
         </div>
 
-        <button onClick={findOrCreateRoom}
-          disabled={entryFee > 0 && balance < entryFee}
+        <button onClick={findOrCreateRoom} disabled={entryFee > 0 && balance < entryFee}
           className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
           <Users className="h-4 w-4" /> Find Match
         </button>
@@ -385,25 +463,19 @@ const LudoPage = () => {
         <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
         <h2 className="text-lg font-bold">Finding Players...</h2>
         <p className="text-sm text-muted-foreground">{players.length}/{maxPlayers} joined</p>
-
         <div className="flex justify-center gap-4">
           {Array.from({ length: maxPlayers }).map((_, i) => {
             const player = players.find((p: any) => p.player_index === i);
             return (
               <div key={i} className={cn("w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all",
                 player ? "border-primary bg-primary/10" : "border-dashed border-border")}>
-                {player ? (
-                  <span className="text-xs font-bold text-center truncate px-1">{player.username?.slice(0, 6)}</span>
-                ) : (
-                  <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
-                )}
+                {player ? <span className="text-xs font-bold text-center truncate px-1">{player.username?.slice(0, 6)}</span>
+                  : <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />}
               </div>
             );
           })}
         </div>
-
-        <button onClick={leaveRoom}
-          className="text-xs text-destructive hover:text-foreground underline">Cancel & Leave</button>
+        <button onClick={leaveRoom} className="text-xs text-destructive hover:text-foreground underline">Cancel & Leave</button>
       </div>
     );
   }
@@ -416,15 +488,12 @@ const LudoPage = () => {
         <h2 className="text-2xl font-bold">{winner} Wins!</h2>
         {entryFee > 0 && <p className="text-primary font-bold text-lg">Prize: ₹{entryFee * players.length}</p>}
         <button onClick={() => { setScreen("lobby"); setRoomId(null); setPlayers([]); }}
-          className="h-10 px-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium">
-          Play Again
-        </button>
+          className="h-10 px-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Play Again</button>
       </div>
     );
   }
 
   // GAME BOARD
-  const cellSize = 100 / 15;
   const DiceIcon = diceValue ? DICE_ICONS[diceValue - 1] : Dice1;
 
   return (
@@ -458,62 +527,77 @@ const LudoPage = () => {
         ))}
       </div>
 
-      {/* Board */}
-      <div className="relative w-full aspect-square max-w-[400px] mx-auto bg-card rounded-xl border border-border overflow-hidden">
+      {/* SVG Ludo Board */}
+      <div className="relative w-full aspect-square max-w-[400px] mx-auto rounded-xl overflow-hidden shadow-lg">
         <svg viewBox="0 0 100 100" className="w-full h-full">
+          {/* Board background */}
           <rect x="0" y="0" width="100" height="100" fill="hsl(var(--card))" />
 
-          {/* Player home areas */}
-          <rect x="0" y="60" width="40" height="40" rx="2" fill={PLAYER_COLORS[0] + "15"} stroke={PLAYER_COLORS[0] + "30"} strokeWidth="0.3" />
-          <rect x="0" y="0" width="40" height="40" rx="2" fill={PLAYER_COLORS[1] + "15"} stroke={PLAYER_COLORS[1] + "30"} strokeWidth="0.3" />
-          <rect x="60" y="0" width="40" height="40" rx="2" fill={PLAYER_COLORS[2] + "15"} stroke={PLAYER_COLORS[2] + "30"} strokeWidth="0.3" />
-          <rect x="60" y="60" width="40" height="40" rx="2" fill={PLAYER_COLORS[3] + "15"} stroke={PLAYER_COLORS[3] + "30"} strokeWidth="0.3" />
+          {/* Home quadrants */}
+          <rect x="0" y="60" width="40" height="40" rx="1" fill="#ef444420" stroke="#ef444440" strokeWidth="0.3" />
+          <rect x="0" y="0" width="40" height="40" rx="1" fill="#22c55e20" stroke="#22c55e40" strokeWidth="0.3" />
+          <rect x="60" y="0" width="40" height="40" rx="1" fill="#eab30820" stroke="#eab30840" strokeWidth="0.3" />
+          <rect x="60" y="60" width="40" height="40" rx="1" fill="#3b82f620" stroke="#3b82f640" strokeWidth="0.3" />
 
-          {/* Center home */}
-          <polygon points="43.3,43.3 50,35 56.7,43.3" fill={PLAYER_COLORS[2] + "40"} />
-          <polygon points="43.3,56.7 50,65 56.7,56.7" fill={PLAYER_COLORS[0] + "40"} />
-          <polygon points="43.3,43.3 35,50 43.3,56.7" fill={PLAYER_COLORS[1] + "40"} />
-          <polygon points="56.7,43.3 65,50 56.7,56.7" fill={PLAYER_COLORS[3] + "40"} />
+          {/* Home yard circles (4 per player) */}
+          {[0, 1, 2, 3].map(pIdx =>
+            YARDS[pIdx].map(([gx, gy], pi) => (
+              <circle key={`yard-${pIdx}-${pi}`}
+                cx={gx * CELL + CELL / 2} cy={gy * CELL + CELL / 2} r={CELL * 0.4}
+                fill={PLAYER_COLORS[pIdx] + "30"} stroke={PLAYER_COLORS[pIdx] + "60"} strokeWidth="0.3" />
+            ))
+          )}
+
+          {/* Center home triangles */}
+          <polygon points="43.3,43.3 50,33.3 56.7,43.3" fill="#eab30840" stroke="#eab30860" strokeWidth="0.2" />
+          <polygon points="43.3,56.7 50,66.7 56.7,56.7" fill="#ef444440" stroke="#ef444460" strokeWidth="0.2" />
+          <polygon points="33.3,43.3 43.3,50 33.3,56.7" fill="#22c55e40" stroke="#22c55e60" strokeWidth="0.2" />
+          <polygon points="66.7,43.3 56.7,50 66.7,56.7" fill="#3b82f640" stroke="#3b82f660" strokeWidth="0.2" />
+
+          {/* Home stretch colored paths */}
+          {[0, 1, 2, 3].map(pIdx =>
+            HOME_STRETCHES[pIdx].map(([gx, gy], si) => (
+              <rect key={`hs-${pIdx}-${si}`}
+                x={gx * CELL + 0.5} y={gy * CELL + 0.5}
+                width={CELL - 1} height={CELL - 1} rx="0.5"
+                fill={PLAYER_COLORS[pIdx] + "25"} stroke={PLAYER_COLORS[pIdx] + "40"} strokeWidth="0.15" />
+            ))
+          )}
+
+          {/* Safe positions markers */}
+          {[0, 8, 13, 21, 26, 34, 39, 47].map(pos => {
+            const coords = MAIN_PATH[pos];
+            if (!coords) return null;
+            return (
+              <text key={`safe-${pos}`} x={coords[0] * CELL + CELL / 2} y={coords[1] * CELL + CELL / 2 + 1}
+                textAnchor="middle" dominantBaseline="middle" fill="hsl(var(--muted-foreground))" fontSize="2.5" opacity="0.4">★</text>
+            );
+          })}
 
           {/* Render pieces */}
-          {gameState.pieces.map((playerPieces, pIdx) => (
+          {gameState.pieces.map((playerPieces, pIdx) =>
             playerPieces.map((pos, pieceIdx) => {
-              let coord: { x: number; y: number };
-              if (pos === -1) {
-                coord = getYardPosition(pIdx, pieceIdx);
-              } else if (pos === 200) {
-                coord = { x: 6.5 + pieceIdx * 0.7, y: 7 };
-              } else if (pos >= 100) {
-                coord = getHomeStretchPosition(pIdx, pos);
-              } else {
-                coord = getBoardPosition(pos);
-              }
-
-              const cx = coord.x * cellSize + cellSize / 2;
-              const cy = coord.y * cellSize + cellSize / 2;
+              const [cx, cy] = getPieceXY(pIdx, pos, pieceIdx);
               const isClickable = isMyTurn && diceRolled && validMoves.includes(pieceIdx) && pIdx === myPlayerIndex;
 
               return (
                 <g key={`${pIdx}-${pieceIdx}`}>
                   {isClickable && (
-                    <circle cx={cx} cy={cy} r={cellSize * 0.55} fill={PLAYER_COLORS[pIdx] + "30"} className="animate-pulse" />
+                    <circle cx={cx} cy={cy} r={CELL * 0.55} fill={PLAYER_COLORS[pIdx] + "30"} className="animate-pulse" />
                   )}
-                  <circle
-                    cx={cx} cy={cy} r={cellSize * 0.35}
-                    fill={PLAYER_COLORS[pIdx]}
-                    stroke="white" strokeWidth="0.4"
+                  <circle cx={cx} cy={cy} r={CELL * 0.35}
+                    fill={PLAYER_COLORS[pIdx]} stroke="white" strokeWidth="0.5"
                     className={cn("transition-all duration-300", isClickable && "cursor-pointer")}
                     style={{ filter: pos === 200 ? "brightness(1.3)" : undefined }}
-                    onClick={() => isClickable && handleMovePiece(pieceIdx)}
-                  />
-                  <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
-                    fill="white" fontSize="2.5" fontWeight="bold">
+                    onClick={() => isClickable && handleMovePiece(pieceIdx)} />
+                  <text x={cx} y={cy + 0.8} textAnchor="middle" dominantBaseline="middle"
+                    fill="white" fontSize="2.5" fontWeight="bold" style={{ pointerEvents: "none" }}>
                     {pieceIdx + 1}
                   </text>
                 </g>
               );
             })
-          ))}
+          )}
         </svg>
       </div>
 
@@ -526,11 +610,7 @@ const LudoPage = () => {
               {isMyTurn ? "Your Turn!" : `${players[gameState.currentTurn]?.username || PLAYER_LABELS[gameState.currentTurn]}'s turn`}
             </span>
           </div>
-          {diceValue && (
-            <div className="flex items-center gap-1">
-              <DiceIcon className="h-8 w-8 text-primary" />
-            </div>
-          )}
+          {diceValue && <DiceIcon className="h-8 w-8 text-primary" />}
         </div>
 
         {isMyTurn && !diceRolled && (

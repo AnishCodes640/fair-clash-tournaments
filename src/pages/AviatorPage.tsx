@@ -12,38 +12,23 @@ type GamePhase = "waiting" | "flying" | "crashed" | "cashed_out";
 
 interface RoundHistory { multiplier: number; crashed: boolean; bet: number; won: number; }
 
-// Controlled crash point distribution
 function generateCrashPoint(): number {
   const r = Math.random();
-  if (r < 0.60) {
-    // 60%: crash between 1.01x–2.5x
-    return 1.01 + Math.random() * 1.49;
-  } else if (r < 0.85) {
-    // 25%: crash between 2.5x–5x
-    return 2.5 + Math.random() * 2.5;
-  } else if (r < 0.97) {
-    // 12%: crash between 5x–8x
-    return 5 + Math.random() * 3;
-  } else {
-    // 3%: crash between 8x–15x (capped, no extreme spikes)
-    return 8 + Math.random() * 7;
-  }
+  if (r < 0.60) return 1.01 + Math.random() * 1.49;
+  else if (r < 0.85) return 2.5 + Math.random() * 2.5;
+  else if (r < 0.97) return 5 + Math.random() * 3;
+  else return 8 + Math.random() * 7;
 }
 
-// Simple Web Audio beep generator
 const audioCtx = typeof AudioContext !== "undefined" ? new AudioContext() : null;
 function playSound(freq: number, duration: number, type: OscillatorType = "sine", volume = 0.15) {
   if (!audioCtx) return;
   try {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    gain.gain.value = volume;
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.type = type; osc.frequency.value = freq; gain.gain.value = volume;
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
     osc.stop(audioCtx.currentTime + duration);
   } catch {}
 }
@@ -71,10 +56,10 @@ const AviatorPage = () => {
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
+  // Sync balance from profile and direct fetch
   useEffect(() => {
     if (user) getWalletBalance(user.id).then(setBalance);
   }, [user]);
-
   useEffect(() => {
     if (profile) setBalance(Number(profile.wallet_balance || 0));
   }, [profile]);
@@ -89,136 +74,85 @@ const AviatorPage = () => {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
     const w = rect.width, h = rect.height;
 
-    // Red-themed dark background
     const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-    bgGrad.addColorStop(0, "#1a0a0a");
-    bgGrad.addColorStop(1, "#2d0f0f");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, w, h);
+    bgGrad.addColorStop(0, "#1a0a0a"); bgGrad.addColorStop(1, "#2d0f0f");
+    ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, w, h);
 
-    // Subtle grid
-    ctx.strokeStyle = "rgba(239,68,68,0.06)";
-    ctx.lineWidth = 1;
-    for (let i = 1; i < 6; i++) {
-      const y = h - (h * i) / 6;
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-    }
+    ctx.strokeStyle = "rgba(239,68,68,0.06)"; ctx.lineWidth = 1;
+    for (let i = 1; i < 6; i++) { const y = h - (h * i) / 6; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
 
-    // Curve points
     const points: [number, number][] = [];
     const maxMult = Math.max(currentMult, 1.1);
-    const steps = 150;
-    for (let i = 0; i <= steps; i++) {
-      const frac = i / steps;
+    for (let i = 0; i <= 150; i++) {
+      const frac = i / 150;
       const mult = 1 + (maxMult - 1) * Math.pow(frac, 1.5);
       if (mult > currentMult) break;
-      const x = frac * w * 0.88 + w * 0.06;
-      const yNorm = (mult - 1) / Math.max(maxMult - 1, 0.1);
-      const y = h - yNorm * h * 0.78 - h * 0.1;
-      points.push([x, y]);
+      points.push([frac * w * 0.88 + w * 0.06, h - ((mult - 1) / Math.max(maxMult - 1, 0.1)) * h * 0.78 - h * 0.1]);
     }
 
     if (points.length > 1) {
       const gradient = ctx.createLinearGradient(0, h, 0, 0);
-      if (crashed) {
-        gradient.addColorStop(0, "rgba(239,68,68,0.0)");
-        gradient.addColorStop(1, "rgba(239,68,68,0.2)");
-      } else {
-        gradient.addColorStop(0, "rgba(251,146,60,0.0)");
-        gradient.addColorStop(1, "rgba(251,146,60,0.15)");
-      }
-
-      ctx.beginPath();
-      ctx.moveTo(points[0][0], h);
+      gradient.addColorStop(0, crashed ? "rgba(239,68,68,0.0)" : "rgba(251,146,60,0.0)");
+      gradient.addColorStop(1, crashed ? "rgba(239,68,68,0.2)" : "rgba(251,146,60,0.15)");
+      ctx.beginPath(); ctx.moveTo(points[0][0], h);
       points.forEach(([x, y]) => ctx.lineTo(x, y));
-      ctx.lineTo(points[points.length - 1][0], h);
-      ctx.closePath();
-      ctx.fillStyle = gradient;
-      ctx.fill();
+      ctx.lineTo(points[points.length - 1][0], h); ctx.closePath();
+      ctx.fillStyle = gradient; ctx.fill();
 
-      ctx.shadowColor = crashed ? "#ef4444" : "#fb923c";
-      ctx.shadowBlur = 12;
-      ctx.beginPath();
-      ctx.moveTo(points[0][0], points[0][1]);
+      ctx.shadowColor = crashed ? "#ef4444" : "#fb923c"; ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]);
       for (let i = 1; i < points.length; i++) {
         const xc = (points[i - 1][0] + points[i][0]) / 2;
         const yc = (points[i - 1][1] + points[i][1]) / 2;
         ctx.quadraticCurveTo(points[i - 1][0], points[i - 1][1], xc, yc);
       }
-      ctx.strokeStyle = crashed ? "#ef4444" : "#fb923c";
-      ctx.lineWidth = 3;
-      ctx.stroke();
+      ctx.strokeStyle = crashed ? "#ef4444" : "#fb923c"; ctx.lineWidth = 3; ctx.stroke();
       ctx.shadowBlur = 0;
-
-      // Plane at tip
       const tip = points[points.length - 1];
-      ctx.font = "28px serif";
-      ctx.fillText(crashed ? "💥" : "✈️", tip[0] - 14, tip[1] + 8);
+      ctx.font = "28px serif"; ctx.fillText(crashed ? "💥" : "✈️", tip[0] - 14, tip[1] + 8);
     }
 
-    // Central multiplier
-    ctx.shadowColor = crashed ? "#ef4444" : "#fb923c";
-    ctx.shadowBlur = 20;
+    ctx.shadowColor = crashed ? "#ef4444" : "#fb923c"; ctx.shadowBlur = 20;
     ctx.font = `bold ${crashed ? 42 : 50}px 'Inter', sans-serif`;
-    ctx.textAlign = "center";
-    ctx.fillStyle = crashed ? "#ef4444" : "#fb923c";
+    ctx.textAlign = "center"; ctx.fillStyle = crashed ? "#ef4444" : "#fb923c";
     ctx.fillText(`${currentMult.toFixed(2)}x`, w / 2, h * 0.45);
     ctx.shadowBlur = 0;
-
-    if (crashed) {
-      ctx.font = "bold 16px 'Inter', sans-serif";
-      ctx.fillStyle = "#ef4444";
-      ctx.fillText("CRASHED!", w / 2, h * 0.45 + 30);
-    }
+    if (crashed) { ctx.font = "bold 16px 'Inter', sans-serif"; ctx.fillStyle = "#ef4444"; ctx.fillText("CRASHED!", w / 2, h * 0.45 + 30); }
   }, []);
 
   const startRound = useCallback(() => {
     const cp = generateCrashPoint();
-    crashPointRef.current = cp;
-    setCrashPoint(cp);
-    setPhase("flying");
-    setMultiplier(1.0);
+    crashPointRef.current = cp; setCrashPoint(cp);
+    setPhase("flying"); setMultiplier(1.0);
     startTimeRef.current = performance.now();
     if (soundOn) playSound(220, 0.3, "sawtooth", 0.08);
 
     const animate = (time: number) => {
       const elapsed = (time - startTimeRef.current) / 1000;
-      // Slower growth: e^(0.08t) for more suspense
       const currentMult = Math.pow(Math.E, elapsed * 0.08);
-
       if (currentMult >= crashPointRef.current) {
-        setMultiplier(crashPointRef.current);
-        setPhase("crashed");
+        setMultiplier(crashPointRef.current); setPhase("crashed");
         drawGraph(crashPointRef.current, true);
         if (soundOn) playSound(100, 0.5, "square", 0.12);
         return;
       }
-
-      setMultiplier(currentMult);
-      drawGraph(currentMult, false);
+      setMultiplier(currentMult); drawGraph(currentMult, false);
       animationRef.current = requestAnimationFrame(animate);
     };
     animationRef.current = requestAnimationFrame(animate);
   }, [drawGraph, soundOn]);
 
-  // Countdown & auto-start
   useEffect(() => {
     if (phase === "waiting") {
-      drawGraph(1.0, false);
-      setCountdown(7);
+      drawGraph(1.0, false); setCountdown(7);
       const interval = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) { clearInterval(interval); startRound(); return 7; }
-          return prev - 1;
-        });
+        setCountdown((prev) => { if (prev <= 1) { clearInterval(interval); startRound(); return 7; } return prev - 1; });
       }, 1000);
       return () => clearInterval(interval);
     }
@@ -255,6 +189,7 @@ const AviatorPage = () => {
     if (!result.success) { toast.error(result.error || "Bet failed"); return; }
     setCurrentBet(amount);
     setBalance(result.newBalance || 0);
+    await refreshProfile();
     if (soundOn) playSound(440, 0.15, "sine", 0.1);
     toast.success(`Bet placed: ₹${amount}`);
   };
@@ -270,7 +205,6 @@ const AviatorPage = () => {
     setPhase("cashed_out");
     const betForSession = currentBet;
     setCurrentBet(0);
-
     if (soundOn) playSound(880, 0.3, "sine", 0.12);
 
     await supabase.from("game_sessions").insert({ user_id: user.id, game_id: "aviator", game_title: "Aviator Crash", bet_amount: betForSession, win_amount: winAmount, result: "win" });
@@ -287,8 +221,7 @@ const AviatorPage = () => {
         setTimeout(() => { setPhase("waiting"); }, 3500);
         return;
       }
-      setMultiplier(currentMult);
-      drawGraph(currentMult, false);
+      setMultiplier(currentMult); drawGraph(currentMult, false);
       animationRef.current = requestAnimationFrame(continueAnim);
     };
     cancelAnimationFrame(animationRef.current);
@@ -315,15 +248,11 @@ const AviatorPage = () => {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-4 space-y-4 animate-fade-in">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/games" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></Link>
           <img src={aviatorLogo} alt="Aviator" className="h-10 w-10 rounded-xl object-cover" />
-          <div>
-            <h1 className="text-lg font-bold tracking-tight">Aviator Crash</h1>
-            <p className="text-[10px] text-muted-foreground">FairClash Tournaments</p>
-          </div>
+          <div><h1 className="text-lg font-bold tracking-tight">Aviator Crash</h1><p className="text-[10px] text-muted-foreground">FairClash Tournaments</p></div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setSoundOn(!soundOn)} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground">
@@ -336,7 +265,6 @@ const AviatorPage = () => {
         </div>
       </div>
 
-      {/* Rules toggle */}
       <button onClick={() => setShowRules(!showRules)} className="flex items-center gap-1.5 text-xs text-primary hover:underline">
         <BookOpen className="h-3 w-3" /> {showRules ? "Hide" : "Show"} Game Rules
       </button>
@@ -354,17 +282,14 @@ const AviatorPage = () => {
         </div>
       )}
 
-      {/* Live stats bar */}
       <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {fakePlayers} playing</span>
         <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> ₹{fakeTotalBets.toLocaleString()} pool</span>
         <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> {history.length} rounds</span>
       </div>
 
-      {/* Game Canvas */}
       <div className="relative rounded-xl overflow-hidden border border-destructive/30">
         <canvas ref={canvasRef} className="w-full aspect-[16/9]" />
-
         {phase === "waiting" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1a0a0a]/90 backdrop-blur-sm">
             <Plane className="h-10 w-10 text-destructive animate-bounce mb-3" />
@@ -373,7 +298,6 @@ const AviatorPage = () => {
             <p className="text-[10px] text-muted-foreground mt-2">Place your bet now!</p>
           </div>
         )}
-
         {phase === "cashed_out" && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-success/90 text-success-foreground px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-success/30">
             ✓ Cashed Out!
@@ -381,7 +305,7 @@ const AviatorPage = () => {
         )}
       </div>
 
-      {/* CASHOUT BUTTON - large, glowing, prominent */}
+      {/* CASHOUT BUTTON */}
       {canCashout && (
         <button onClick={handleCashout}
           className="w-full h-16 rounded-xl bg-gradient-to-r from-success to-emerald-500 text-white text-xl font-bold shadow-lg shadow-success/40 flex items-center justify-center gap-3 transition-all active:scale-95 animate-pulse">
@@ -389,21 +313,13 @@ const AviatorPage = () => {
         </button>
       )}
 
-      {/* Active bet indicator */}
       {currentBet > 0 && phase === "flying" && (
         <div className="surface-card rounded-lg p-3 flex items-center justify-between border border-success/30">
-          <div className="text-xs">
-            <span className="text-muted-foreground">Active Bet:</span>
-            <span className="ml-1 font-bold font-mono-num text-foreground">₹{currentBet}</span>
-          </div>
-          <div className="text-xs">
-            <span className="text-muted-foreground">Potential Win:</span>
-            <span className="ml-1 font-bold font-mono-num text-success">₹{(currentBet * multiplier).toFixed(0)}</span>
-          </div>
+          <div className="text-xs"><span className="text-muted-foreground">Active Bet:</span><span className="ml-1 font-bold font-mono-num text-foreground">₹{currentBet}</span></div>
+          <div className="text-xs"><span className="text-muted-foreground">Potential Win:</span><span className="ml-1 font-bold font-mono-num text-success">₹{(currentBet * multiplier).toFixed(0)}</span></div>
         </div>
       )}
 
-      {/* History strip */}
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
         {history.slice(0, 15).map((h, i) => (
           <span key={i} className={cn("px-2 py-1 rounded-md text-[10px] font-bold font-mono-num whitespace-nowrap flex-shrink-0",
@@ -413,19 +329,14 @@ const AviatorPage = () => {
         {history.length === 0 && <span className="text-xs text-muted-foreground">No rounds played yet</span>}
       </div>
 
-      {/* Insufficient balance warning */}
       {balance < 1 && (
         <div className="surface-card rounded-xl p-3 flex items-center gap-2 border-l-2 border-l-warning animate-fade-in">
           <AlertCircle className="h-4 w-4 text-warning flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-xs text-warning font-medium">Insufficient balance</p>
-            <p className="text-[10px] text-muted-foreground">Minimum ₹1 required to play</p>
-          </div>
+          <div className="flex-1"><p className="text-xs text-warning font-medium">Insufficient balance</p><p className="text-[10px] text-muted-foreground">Minimum ₹1 required to play</p></div>
           <Link to="/wallet" className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[10px] font-medium flex items-center">Deposit</Link>
         </div>
       )}
 
-      {/* Betting Controls */}
       <div className="surface-card rounded-xl p-4 space-y-3">
         <div className="flex gap-2">
           <div className="flex-1">
@@ -435,8 +346,7 @@ const AviatorPage = () => {
               className="w-full h-10 rounded-lg bg-background border border-border px-3 text-sm font-mono-num focus:outline-none focus:ring-1 focus:ring-destructive disabled:opacity-50" />
           </div>
           <div className="flex flex-col justify-end">
-            <button onClick={handlePlaceBet}
-              disabled={!canPlaceBet}
+            <button onClick={handlePlaceBet} disabled={!canPlaceBet}
               className="h-10 px-6 rounded-lg bg-destructive text-destructive-foreground text-sm font-bold disabled:opacity-50 whitespace-nowrap shadow-lg shadow-destructive/20">
               {currentBet > 0 ? `Bet: ₹${currentBet}` : "Place Bet"}
             </button>
@@ -452,7 +362,6 @@ const AviatorPage = () => {
         </div>
       </div>
 
-      {/* Detailed History */}
       {history.length > 0 && (
         <div className="surface-card rounded-xl overflow-hidden">
           <div className="px-4 py-2 border-b border-border flex items-center gap-2">
