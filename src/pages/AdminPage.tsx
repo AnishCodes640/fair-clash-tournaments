@@ -512,10 +512,15 @@ const AdminPage = () => {
             </form>
           )}
           <div className="space-y-2">
-            {tournaments.map((t) => (
+           {tournaments.map((t) => (
               <div key={t.id} className="surface-card rounded-lg p-4">
                 <div className="flex items-center justify-between"><p className="text-sm font-medium">{t.title}</p>
-                  <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium", t.status === "upcoming" ? "bg-primary/10 text-primary" : t.status === "live" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground")}>{t.status}</span></div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium", t.status === "upcoming" ? "bg-primary/10 text-primary" : t.status === "live" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground")}>{t.status}</span>
+                    <button onClick={async () => { if (!confirm("Delete this tournament?")) return; await supabase.from("tournaments").delete().eq("id", t.id); toast.success("Tournament deleted"); loadDashboard(); }}
+                      className="h-6 w-6 rounded flex items-center justify-center hover:bg-destructive/10 text-destructive"><Trash2 className="h-3 w-3" /></button>
+                  </div>
+                </div>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground"><span>Entry: ₹{Number(t.entry_fee).toFixed(0)}</span><span>Prize: ₹{Number(t.prize_pool).toFixed(0)}</span><span>{t.current_players}/{t.max_players}</span></div>
               </div>
             ))}
