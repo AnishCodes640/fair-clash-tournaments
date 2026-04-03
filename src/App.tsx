@@ -20,6 +20,7 @@ import GamePlayPage from "./pages/GamePlayPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import LudoPage from "./pages/LudoPage";
 import RulesPage from "./pages/RulesPage";
+import TicTacToePage from "./pages/TicTacToePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/ludo" element={<LudoPage />} />
                 <Route path="/rules" element={<RulesPage />} />
+                <Route path="/tic-tac-toe" element={<TicTacToePage />} />
               </Route>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<NotFound />} />
