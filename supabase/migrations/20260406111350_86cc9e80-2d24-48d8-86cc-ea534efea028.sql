@@ -1,0 +1,2 @@
+ALTER TABLE public.wallet_transactions DROP CONSTRAINT wallet_transactions_type_check;
+ALTER TABLE public.wallet_transactions ADD CONSTRAINT wallet_transactions_type_check CHECK (type = ANY (ARRAY['deposit'::text, 'withdrawal'::text, 'winning'::text, 'entry_fee'::text, 'refund'::text, 'admin_credit'::text, 'admin_debit'::text, 'bet'::text, 'platform_fee'::text]));
