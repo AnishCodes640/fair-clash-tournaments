@@ -1,4 +1,4 @@
-import { Gamepad2, Play, Plane, Dice5, Grid3X3 } from "lucide-react";
+import { Gamepad2, Play, Plane, Dice5, Grid3X3, Bug, Brain, Hash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useNavigate } from "react-router-dom";
@@ -18,14 +18,20 @@ const GamesPage = () => {
       setLoading(false);
     };
     fetchGames();
-
     const channel = supabase.channel("games-list-rt")
       .on("postgres_changes", { event: "*", schema: "public", table: "games" }, () => fetchGames())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const totalGames = games.length + 3; // Aviator + Ludo + TicTacToe
+  const totalGames = games.length + 6; // Aviator + Ludo + TicTacToe + Snake + Memory + Sudoku
+
+  const practiceGames = [
+    { to: "/tic-tac-toe", icon: Grid3X3, name: "Tic Tac Toe", desc: "AI opponent · 3 levels" },
+    { to: "/snake", icon: Bug, name: "Snake", desc: "Classic arcade · 3 speeds" },
+    { to: "/memory", icon: Brain, name: "Memory Match", desc: "Card matching · 3 levels" },
+    { to: "/sudoku", icon: Hash, name: "Sudoku", desc: "Number puzzle · 3 levels" },
+  ];
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
@@ -36,7 +42,6 @@ const GamesPage = () => {
 
       {/* Featured Games - Large Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Aviator - Large */}
         <Link to="/aviator" className="group surface-card rounded-2xl overflow-hidden hover:border-primary/30 transition-all hover-scale">
           <div className="relative p-5 flex items-center gap-4">
             <img src={aviatorLogo} alt="Aviator Crash" className="h-16 w-16 rounded-2xl object-cover shadow-md" />
@@ -52,7 +57,6 @@ const GamesPage = () => {
           </div>
         </Link>
 
-        {/* Ludo Clash - Large */}
         <Link to="/ludo" className="group surface-card rounded-2xl overflow-hidden hover:border-primary/30 transition-all hover-scale">
           <div className="relative p-5 flex items-center gap-4">
             <img src={ludoClashLogo} alt="Ludo Clash" className="h-16 w-16 rounded-2xl object-cover shadow-md" />
@@ -69,20 +73,24 @@ const GamesPage = () => {
         </Link>
       </div>
 
-      {/* Practice Games - Horizontal Card */}
-      <Link to="/tic-tac-toe" className="block surface-card rounded-xl overflow-hidden group hover:border-primary/30 transition-all hover-scale">
-        <div className="flex items-center gap-4 px-4 py-3">
-          <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center">
-            <Grid3X3 className="h-6 w-6 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-bold flex items-center gap-1.5">Tic Tac Toe</p>
-            <p className="text-xs text-muted-foreground">Practice game · AI opponent · 3 difficulty levels</p>
-          </div>
-          <span className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-medium">Free</span>
-          <Play className="h-4 w-4 text-primary" />
+      {/* Practice Games */}
+      <div>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Free Practice Games</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {practiceGames.map((g) => (
+            <Link key={g.to} to={g.to} className="surface-card rounded-xl overflow-hidden group hover:border-primary/30 transition-all hover-scale">
+              <div className="p-4 text-center">
+                <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center mx-auto mb-2">
+                  <g.icon className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-bold">{g.name}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{g.desc}</p>
+                <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-medium">Free</span>
+              </div>
+            </Link>
+          ))}
         </div>
-      </Link>
+      </div>
 
       {/* Browser Games (uploaded) */}
       {loading ? (

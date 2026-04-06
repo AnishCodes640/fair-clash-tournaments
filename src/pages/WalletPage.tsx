@@ -274,7 +274,6 @@ const WalletPage = () => {
             </button>
           </form>
 
-          {/* Withdrawal history */}
           {withdrawals.length > 0 && (
             <div className="surface-card rounded-lg overflow-hidden">
               <div className="px-4 py-2 border-b border-border">
@@ -313,7 +312,9 @@ const WalletPage = () => {
                     <p className="text-xs text-muted-foreground">{tx.description || new Date(tx.created_at).toLocaleDateString()}</p>
                   </div>
                   <span className={cn("font-mono-num text-sm font-medium",
-                    ["deposit", "winning", "refund", "admin_credit"].includes(tx.type) ? "text-success" : "text-destructive"
+                    ["deposit", "winning", "refund", "admin_credit", "bet"].includes(tx.type)
+                      ? (tx.type === "bet" ? "text-destructive" : "text-success")
+                      : "text-destructive"
                   )}>
                     {["deposit", "winning", "refund", "admin_credit"].includes(tx.type) ? "+" : "-"}₹{Number(tx.amount).toFixed(2)}
                   </span>
