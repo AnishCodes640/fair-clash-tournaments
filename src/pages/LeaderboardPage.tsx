@@ -14,6 +14,7 @@ interface PlayerData {
   wallet_balance: number;
   totalGames: number;
   wins: number;
+  losses: number;
   totalBets: number;
   totalWinnings: number;
   isAdmin: boolean;
@@ -24,6 +25,7 @@ const LeaderboardPage = () => {
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [ranking, setRanking] = useState<RankingType>("balance");
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
+  const [selectedHistory, setSelectedHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,11 +43,12 @@ const LeaderboardPage = () => {
 
       const adminSet = new Set(roles.filter((r: any) => r.role === "admin").map((r: any) => r.user_id));
 
-      const statsMap: Record<string, { totalGames: number; wins: number; totalBets: number; totalWinnings: number }> = {};
+      const statsMap: Record<string, { totalGames: number; wins: number; losses: number; totalBets: number; totalWinnings: number }> = {};
       sessions.forEach((s: any) => {
-        if (!statsMap[s.user_id]) statsMap[s.user_id] = { totalGames: 0, wins: 0, totalBets: 0, totalWinnings: 0 };
+        if (!statsMap[s.user_id]) statsMap[s.user_id] = { totalGames: 0, wins: 0, losses: 0, totalBets: 0, totalWinnings: 0 };
         statsMap[s.user_id].totalGames++;
         if (s.result === "win") statsMap[s.user_id].wins++;
+        if (s.result === "loss") statsMap[s.user_id].losses++;
         statsMap[s.user_id].totalBets += Number(s.bet_amount || 0);
         statsMap[s.user_id].totalWinnings += Number(s.win_amount || 0);
       });
@@ -58,6 +61,7 @@ const LeaderboardPage = () => {
         wallet_balance: Number(p.wallet_balance || 0),
         totalGames: statsMap[p.user_id]?.totalGames || 0,
         wins: statsMap[p.user_id]?.wins || 0,
+        losses: statsMap[p.user_id]?.losses || 0,
         totalBets: statsMap[p.user_id]?.totalBets || 0,
         totalWinnings: statsMap[p.user_id]?.totalWinnings || 0,
         isAdmin: adminSet.has(p.user_id),
@@ -104,6 +108,18 @@ const LeaderboardPage = () => {
     { id: "total_winnings", label: "Winnings", icon: TrendingUp },
   ];
 
+  const handleSelectPlayer = async (p: PlayerData) => {
+    setSelectedPlayer(p);
+    // Load game history for this player
+    const { data } = await supabase
+      .from("game_sessions")
+      .select("*")
+      .eq("user_id", p.user_id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setSelectedHistory(data || []);
+  };
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center gap-2">
@@ -125,7 +141,7 @@ const LeaderboardPage = () => {
 
       {/* Selected player detail */}
       {selectedPlayer && (
-        <PlayerDetail player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
+        <PlayerDetail player={selectedPlayer} history={selectedHistory} onClose={() => { setSelectedPlayer(null); setSelectedHistory([]); }} />
       )}
 
       {/* Rankings list */}
@@ -138,23 +154,25 @@ const LeaderboardPage = () => {
               const isCurrentUser = user?.id === p.user_id;
               const avatarUrl = p.avatar_url ? supabase.storage.from("avatars").getPublicUrl(p.avatar_url).data.publicUrl : null;
               return (
-                <button key={p.user_id} onClick={() => setSelectedPlayer(p)}
+                <button key={p.user_id} onClick={() => handleSelectPlayer(p)}
                   className={cn("w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-accent/50 transition-colors",
-                    isCurrentUser && "bg-primary/5")}>
+                    isCurrentUser && "bg-primary/5",
+                    p.isAdmin && "bg-warning/5")}>
                   <span className={cn("text-xs font-bold w-7 text-center font-mono-num",
                     i === 0 ? "text-warning" : i === 1 ? "text-muted-foreground" : i === 2 ? "text-warning/60" : "text-muted-foreground")}>
-                    {i <= 2 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}
+                    {i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
                   </span>
                   <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
                     {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> :
                       <span className="text-xs font-bold text-muted-foreground">{(p.display_name || p.username || "?")[0].toUpperCase()}</span>}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate flex items-center gap-1">
+                    <p className={cn("text-sm font-medium truncate flex items-center gap-1", p.isAdmin && "text-warning")}>
                       {p.display_name || p.username}
-                      {p.isAdmin && <Shield className="h-3 w-3 text-primary" />}
+                      {p.isAdmin && <Shield className="h-3 w-3 text-warning" />}
                       {isCurrentUser && <span className="text-[10px] text-primary">(you)</span>}
                     </p>
+                    <p className="text-[10px] text-muted-foreground">{p.totalGames} games · {p.wins}W/{p.losses}L</p>
                   </div>
                   <span className="font-mono-num text-xs font-semibold text-primary">{getValue(p)}</span>
                 </button>
@@ -170,8 +188,9 @@ const LeaderboardPage = () => {
   );
 };
 
-function PlayerDetail({ player, onClose }: { player: PlayerData; onClose: () => void }) {
+function PlayerDetail({ player, history, onClose }: { player: PlayerData; history: any[]; onClose: () => void }) {
   const avatarUrl = player.avatar_url ? supabase.storage.from("avatars").getPublicUrl(player.avatar_url).data.publicUrl : null;
+  const winRate = player.totalGames > 0 ? ((player.wins / player.totalGames) * 100).toFixed(0) : "0";
 
   return (
     <div className="surface-card rounded-xl p-4 space-y-3 animate-fade-in border border-primary/20">
@@ -185,20 +204,42 @@ function PlayerDetail({ player, onClose }: { player: PlayerData; onClose: () => 
             )}
           </div>
           <div>
-            <p className="text-sm font-semibold flex items-center gap-1.5">
+            <p className={cn("text-sm font-semibold flex items-center gap-1.5", player.isAdmin && "text-warning")}>
               {player.display_name || player.username}
-              {player.isAdmin && <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">Admin</span>}
+              {player.isAdmin && <span className="px-1.5 py-0.5 rounded bg-warning/10 text-warning text-[10px] font-medium">Admin</span>}
             </p>
+            <p className="text-[10px] text-muted-foreground">Win rate: {winRate}%</p>
           </div>
         </div>
         <button onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         <StatBox icon={Gamepad2} value={String(player.totalGames)} label="Games" />
         <StatBox icon={Trophy} value={String(player.wins)} label="Wins" color="text-success" />
+        <StatBox icon={Target} value={String(player.losses)} label="Losses" color="text-destructive" />
         <StatBox icon={Target} value={`₹${player.totalBets.toFixed(0)}`} label="Total Bets" color="text-primary" />
         <StatBox icon={TrendingUp} value={`₹${player.totalWinnings.toFixed(0)}`} label="Winnings" color="text-warning" />
       </div>
+
+      {/* Game History */}
+      {history.length > 0 && (
+        <div className="border-t border-border pt-3">
+          <p className="text-xs font-semibold mb-2">Recent Games</p>
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            {history.map((g: any) => (
+              <div key={g.id} className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-md bg-secondary/50">
+                <span className="truncate max-w-[120px]">{g.game_title}</span>
+                <div className="flex items-center gap-2">
+                  {Number(g.bet_amount) > 0 && <span className="text-muted-foreground">₹{Number(g.bet_amount).toFixed(0)}</span>}
+                  <span className={cn("font-medium px-1.5 py-0.5 rounded",
+                    g.result === "win" ? "bg-success/10 text-success" : g.result === "loss" ? "bg-destructive/10 text-destructive" : "text-muted-foreground"
+                  )}>{g.result === "win" ? "Win" : g.result === "loss" ? "Loss" : g.result}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
