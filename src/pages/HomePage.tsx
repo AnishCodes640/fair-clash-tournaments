@@ -1,4 +1,4 @@
-import { Trophy, Gamepad2, ArrowRight, Bell, Plane, Wallet, Crown, Clock, Star, TrendingUp, BookOpen, Dice5, Grid3X3 } from "lucide-react";
+import { Trophy, Gamepad2, ArrowRight, Bell, Plane, Wallet, Crown, Clock, Star, TrendingUp, Dice5, Grid3X3, Bug, Brain, Hash } from "lucide-react";
 import { Link } from "react-router-dom";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,7 +31,7 @@ const HomePage = () => {
       const uploadedList = gamesRes.data || [];
       setUploadedGames(uploadedList);
       setStats({
-        games: uploadedList.length + 3, // +3 for Aviator, Ludo, TicTacToe
+        games: uploadedList.length + 6, // +6 built-in games
         tournaments: tournamentsRes.data?.length || 0,
         activePlayers: 0,
       });
@@ -107,6 +107,20 @@ const HomePage = () => {
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
           </Link>
+        </div>
+        {/* Practice games row */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+          {[
+            { to: "/snake", icon: Bug, name: "Snake" },
+            { to: "/memory", icon: Brain, name: "Memory" },
+            { to: "/sudoku", icon: Hash, name: "Sudoku" },
+          ].map(g => (
+            <Link key={g.to} to={g.to} className="surface-card rounded-lg px-4 py-3 flex items-center gap-2 min-w-[130px] flex-shrink-0 hover:border-primary/30 transition-all">
+              <g.icon className="h-4 w-4 text-primary" />
+              <span className="text-xs font-medium">{g.name}</span>
+              <span className="ml-auto text-[10px] text-muted-foreground">Free</span>
+            </Link>
+          ))}
         </div>
       </section>
 
