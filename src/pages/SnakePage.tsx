@@ -3,6 +3,7 @@ import { ArrowLeft, RotateCcw, Pause, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import snakeLogo from "@/assets/snake-logo.jpg";
 
 const GRID = 20;
 const CELL_SIZE = 100 / GRID;
@@ -10,6 +11,7 @@ const SPEED_MAP = { easy: 180, normal: 120, hard: 70 };
 
 type Dir = "UP" | "DOWN" | "LEFT" | "RIGHT";
 type Difficulty = "easy" | "normal" | "hard";
+const OPP: Record<Dir, Dir> = { UP: "DOWN", DOWN: "UP", LEFT: "RIGHT", RIGHT: "LEFT" };
 
 const SnakePage = () => {
   const [snake, setSnake] = useState<[number, number][]>([[10, 10]]);
@@ -22,7 +24,9 @@ const SnakePage = () => {
   const [started, setStarted] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const dirRef = useRef<Dir>("RIGHT");
+  const dirChangedRef = useRef(false); // debounce direction changes per tick
   const intervalRef = useRef<number>(0);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const spawnFood = useCallback((snk: [number, number][]): [number, number] => {
     let f: [number, number];
@@ -40,6 +44,7 @@ const SnakePage = () => {
   useEffect(() => {
     if (!started || gameOver || paused) return;
     intervalRef.current = window.setInterval(() => {
+      dirChangedRef.current = false; // allow one direction change per tick
       setSnake(prev => {
         const [hx, hy] = prev[0];
         let nx = hx, ny = hy;
@@ -71,29 +76,53 @@ const SnakePage = () => {
     return () => clearInterval(intervalRef.current);
   }, [started, gameOver, paused, difficulty, highScore, spawnFood]);
 
+  const changeDir = useCallback((nd: Dir) => {
+    if (dirChangedRef.current) return; // only one change per tick
+    if (nd !== OPP[dirRef.current]) {
+      dirRef.current = nd;
+      setDir(nd);
+      dirChangedRef.current = true;
+    }
+  }, []);
+
+  // Keyboard
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       const map: Record<string, Dir> = { ArrowUp: "UP", ArrowDown: "DOWN", ArrowLeft: "LEFT", ArrowRight: "RIGHT", w: "UP", s: "DOWN", a: "LEFT", d: "RIGHT" };
       const nd = map[e.key];
       if (!nd) return;
       e.preventDefault();
-      const opp: Record<Dir, Dir> = { UP: "DOWN", DOWN: "UP", LEFT: "RIGHT", RIGHT: "LEFT" };
-      if (nd !== opp[dirRef.current]) { dirRef.current = nd; setDir(nd); }
+      changeDir(nd);
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
+  }, [changeDir]);
+
+  // Swipe detection on game area
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }, []);
 
-  const handleSwipe = useCallback((d: Dir) => {
-    const opp: Record<Dir, Dir> = { UP: "DOWN", DOWN: "UP", LEFT: "RIGHT", RIGHT: "LEFT" };
-    if (d !== opp[dirRef.current]) { dirRef.current = d; setDir(d); }
-  }, []);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+    const MIN_SWIPE = 20;
+    if (Math.abs(dx) < MIN_SWIPE && Math.abs(dy) < MIN_SWIPE) return;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      changeDir(dx > 0 ? "RIGHT" : "LEFT");
+    } else {
+      changeDir(dy > 0 ? "DOWN" : "UP");
+    }
+    touchStartRef.current = null;
+  }, [changeDir]);
 
   return (
     <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center gap-3">
         <Link to="/games" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></Link>
-        <div><h1 className="text-xl font-bold tracking-tight">🐍 Snake</h1><p className="text-[10px] text-muted-foreground">Practice Mode · Free</p></div>
+        <img src={snakeLogo} alt="Snake" className="h-10 w-10 rounded-xl object-cover" />
+        <div><h1 className="text-xl font-bold tracking-tight">Snake</h1><p className="text-[10px] text-muted-foreground">Practice Mode · Free</p></div>
       </div>
 
       <div className="flex gap-2">
@@ -111,30 +140,33 @@ const SnakePage = () => {
         <span>Best: <strong className="font-mono-num text-warning">{highScore}</strong></span>
       </div>
 
-      <div className="relative w-full aspect-square rounded-xl overflow-hidden border border-border bg-card">
-        <svg viewBox={`0 0 100 100`} className="w-full h-full">
+      <div
+        className="relative w-full aspect-square rounded-xl overflow-hidden border border-border bg-card"
+        style={{ touchAction: "none" }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <svg viewBox="0 0 100 100" className="w-full h-full">
           <rect width="100" height="100" fill="hsl(var(--card))" />
-          {/* Grid lines */}
           {Array.from({ length: GRID + 1 }).map((_, i) => (
             <g key={i}>
               <line x1={i * CELL_SIZE} y1="0" x2={i * CELL_SIZE} y2="100" stroke="hsl(var(--border))" strokeWidth="0.15" />
               <line x1="0" y1={i * CELL_SIZE} x2="100" y2={i * CELL_SIZE} stroke="hsl(var(--border))" strokeWidth="0.15" />
             </g>
           ))}
-          {/* Food */}
           <circle cx={food[0] * CELL_SIZE + CELL_SIZE / 2} cy={food[1] * CELL_SIZE + CELL_SIZE / 2}
             r={CELL_SIZE * 0.4} fill="hsl(var(--destructive))" className="animate-pulse" />
-          {/* Snake */}
           {snake.map(([x, y], i) => (
             <rect key={i} x={x * CELL_SIZE + 0.3} y={y * CELL_SIZE + 0.3}
               width={CELL_SIZE - 0.6} height={CELL_SIZE - 0.6} rx="0.8"
-              fill={i === 0 ? "hsl(var(--primary))" : `hsl(var(--primary) / ${0.8 - i * 0.01})`} />
+              fill={i === 0 ? "hsl(var(--primary))" : `hsl(var(--primary) / ${Math.max(0.3, 0.8 - i * 0.01)})`} />
           ))}
         </svg>
 
         {!started && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-            <p className="text-lg font-bold mb-3">🐍 Snake Game</p>
+            <img src={snakeLogo} alt="Snake" className="h-14 w-14 rounded-2xl object-cover mb-3" />
+            <p className="text-lg font-bold mb-3">Snake Game</p>
             <button onClick={reset} className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Start Game</button>
           </div>
         )}
@@ -149,20 +181,21 @@ const SnakePage = () => {
         )}
       </div>
 
-      {/* Mobile Controls */}
+      {/* Mobile D-pad + swipe hint */}
       <div className="grid grid-cols-3 gap-2 max-w-[200px] mx-auto">
         <div />
-        <button onClick={() => handleSwipe("UP")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95">↑</button>
+        <button onClick={() => changeDir("UP")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95 transition-transform">↑</button>
         <div />
-        <button onClick={() => handleSwipe("LEFT")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95">←</button>
-        <button onClick={() => setPaused(!paused)} className="h-12 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
+        <button onClick={() => changeDir("LEFT")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95 transition-transform">←</button>
+        <button onClick={() => setPaused(!paused)} className="h-12 rounded-lg bg-secondary flex items-center justify-center active:scale-95 transition-transform">
           {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
         </button>
-        <button onClick={() => handleSwipe("RIGHT")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95">→</button>
+        <button onClick={() => changeDir("RIGHT")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95 transition-transform">→</button>
         <div />
-        <button onClick={() => handleSwipe("DOWN")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95">↓</button>
+        <button onClick={() => changeDir("DOWN")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95 transition-transform">↓</button>
         <div />
       </div>
+      <p className="text-[10px] text-center text-muted-foreground">Swipe on the board or use buttons to control</p>
     </div>
   );
 };

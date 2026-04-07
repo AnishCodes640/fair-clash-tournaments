@@ -24,6 +24,7 @@ import TicTacToePage from "./pages/TicTacToePage";
 import SnakePage from "./pages/SnakePage";
 import MemoryPage from "./pages/MemoryPage";
 import SudokuPage from "./pages/SudokuPage";
+import DoodleJumpPage from "./pages/DoodleJumpPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
                 <Route path="/snake" element={<SnakePage />} />
                 <Route path="/memory" element={<MemoryPage />} />
                 <Route path="/sudoku" element={<SudokuPage />} />
+                <Route path="/doodle-jump" element={<DoodleJumpPage />} />
               </Route>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<NotFound />} />

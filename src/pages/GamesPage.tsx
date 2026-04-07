@@ -1,9 +1,14 @@
-import { Gamepad2, Play, Plane, Dice5, Grid3X3, Bug, Brain, Hash } from "lucide-react";
+import { Gamepad2, Play, Plane, Dice5 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useNavigate } from "react-router-dom";
 import aviatorLogo from "@/assets/aviator-logo.jpg";
 import ludoClashLogo from "@/assets/ludo-clash-logo.jpg";
+import ticTacToeLogo from "@/assets/tic-tac-toe-logo.jpg";
+import snakeLogo from "@/assets/snake-logo.jpg";
+import sudokuLogo from "@/assets/sudoku-logo.png";
+import memoryLogo from "@/assets/memory-logo.jpg";
+import doodleJumpLogo from "@/assets/doodle-jump-logo.jpg";
 import { cn } from "@/lib/utils";
 
 const GamesPage = () => {
@@ -24,13 +29,14 @@ const GamesPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const totalGames = games.length + 6; // Aviator + Ludo + TicTacToe + Snake + Memory + Sudoku
+  const totalGames = games.length + 7; // Aviator + Ludo + TicTacToe + Snake + Memory + Sudoku + Doodle Jump
 
   const practiceGames = [
-    { to: "/tic-tac-toe", icon: Grid3X3, name: "Tic Tac Toe", desc: "AI opponent · 3 levels" },
-    { to: "/snake", icon: Bug, name: "Snake", desc: "Classic arcade · 3 speeds" },
-    { to: "/memory", icon: Brain, name: "Memory Match", desc: "Card matching · 3 levels" },
-    { to: "/sudoku", icon: Hash, name: "Sudoku", desc: "Number puzzle · 3 levels" },
+    { to: "/tic-tac-toe", logo: ticTacToeLogo, name: "Tic Tac Toe", desc: "AI opponent · 3 levels" },
+    { to: "/snake", logo: snakeLogo, name: "Snake", desc: "Classic arcade · 3 speeds" },
+    { to: "/memory", logo: memoryLogo, name: "Memory Match", desc: "Card matching · 3 levels" },
+    { to: "/sudoku", logo: sudokuLogo, name: "Sudoku", desc: "Number puzzle · 3 levels" },
+    { to: "/doodle-jump", logo: doodleJumpLogo, name: "Doodle Jump", desc: "Platformer · Endless" },
   ];
 
   return (
@@ -80,9 +86,7 @@ const GamesPage = () => {
           {practiceGames.map((g) => (
             <Link key={g.to} to={g.to} className="surface-card rounded-xl overflow-hidden group hover:border-primary/30 transition-all hover-scale">
               <div className="p-4 text-center">
-                <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center mx-auto mb-2">
-                  <g.icon className="h-6 w-6 text-primary" />
-                </div>
+                <img src={g.logo} alt={g.name} className="h-12 w-12 rounded-xl object-cover mx-auto mb-2 shadow-sm" />
                 <p className="text-sm font-bold">{g.name}</p>
                 <p className="text-[10px] text-muted-foreground mt-1">{g.desc}</p>
                 <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-medium">Free</span>
