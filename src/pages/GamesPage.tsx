@@ -29,13 +29,14 @@ const GamesPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const totalGames = games.length + 6; // Aviator + Ludo + TicTacToe + Snake + Memory + Sudoku
+  const totalGames = games.length + 7; // Aviator + Ludo + TicTacToe + Snake + Memory + Sudoku + Doodle Jump
 
   const practiceGames = [
-    { to: "/tic-tac-toe", icon: Grid3X3, name: "Tic Tac Toe", desc: "AI opponent · 3 levels" },
-    { to: "/snake", icon: Bug, name: "Snake", desc: "Classic arcade · 3 speeds" },
-    { to: "/memory", icon: Brain, name: "Memory Match", desc: "Card matching · 3 levels" },
-    { to: "/sudoku", icon: Hash, name: "Sudoku", desc: "Number puzzle · 3 levels" },
+    { to: "/tic-tac-toe", logo: ticTacToeLogo, name: "Tic Tac Toe", desc: "AI opponent · 3 levels" },
+    { to: "/snake", logo: snakeLogo, name: "Snake", desc: "Classic arcade · 3 speeds" },
+    { to: "/memory", logo: memoryLogo, name: "Memory Match", desc: "Card matching · 3 levels" },
+    { to: "/sudoku", logo: sudokuLogo, name: "Sudoku", desc: "Number puzzle · 3 levels" },
+    { to: "/doodle-jump", logo: doodleJumpLogo, name: "Doodle Jump", desc: "Platformer · Endless" },
   ];
 
   return (
