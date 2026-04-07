@@ -1,9 +1,14 @@
-import { Gamepad2, Play, Plane, Dice5, Grid3X3, Bug, Brain, Hash } from "lucide-react";
+import { Gamepad2, Play, Plane, Dice5 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useNavigate } from "react-router-dom";
 import aviatorLogo from "@/assets/aviator-logo.jpg";
 import ludoClashLogo from "@/assets/ludo-clash-logo.jpg";
+import ticTacToeLogo from "@/assets/tic-tac-toe-logo.jpg";
+import snakeLogo from "@/assets/snake-logo.jpg";
+import sudokuLogo from "@/assets/sudoku-logo.png";
+import memoryLogo from "@/assets/memory-logo.jpg";
+import doodleJumpLogo from "@/assets/doodle-jump-logo.jpg";
 import { cn } from "@/lib/utils";
 
 const GamesPage = () => {
