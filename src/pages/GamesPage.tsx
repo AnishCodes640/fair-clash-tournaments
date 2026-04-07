@@ -86,9 +86,7 @@ const GamesPage = () => {
           {practiceGames.map((g) => (
             <Link key={g.to} to={g.to} className="surface-card rounded-xl overflow-hidden group hover:border-primary/30 transition-all hover-scale">
               <div className="p-4 text-center">
-                <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center mx-auto mb-2">
-                  <g.icon className="h-6 w-6 text-primary" />
-                </div>
+                <img src={g.logo} alt={g.name} className="h-12 w-12 rounded-xl object-cover mx-auto mb-2 shadow-sm" />
                 <p className="text-sm font-bold">{g.name}</p>
                 <p className="text-[10px] text-muted-foreground mt-1">{g.desc}</p>
                 <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-medium">Free</span>

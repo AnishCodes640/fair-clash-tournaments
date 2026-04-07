@@ -31,7 +31,7 @@ const HomePage = () => {
       const uploadedList = gamesRes.data || [];
       setUploadedGames(uploadedList);
       setStats({
-        games: uploadedList.length + 6, // +6 built-in games
+        games: uploadedList.length + 7, // +7 built-in games
         tournaments: tournamentsRes.data?.length || 0,
         activePlayers: 0,
       });

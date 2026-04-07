@@ -56,6 +56,7 @@ const App = () => (
                 <Route path="/snake" element={<SnakePage />} />
                 <Route path="/memory" element={<MemoryPage />} />
                 <Route path="/sudoku" element={<SudokuPage />} />
+                <Route path="/doodle-jump" element={<DoodleJumpPage />} />
               </Route>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<NotFound />} />
