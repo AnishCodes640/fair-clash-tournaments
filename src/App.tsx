@@ -24,6 +24,7 @@ import TicTacToePage from "./pages/TicTacToePage";
 import SnakePage from "./pages/SnakePage";
 import MemoryPage from "./pages/MemoryPage";
 import SudokuPage from "./pages/SudokuPage";
+import DoodleJumpPage from "./pages/DoodleJumpPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
