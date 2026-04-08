@@ -12,6 +12,8 @@ import { ArrowLeft, Wallet, Users, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Tro
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import ludoClashLogo from "@/assets/ludo-clash-logo.jpg";
+import ludoBoard from "@/assets/ludo-board.jpg";
+import { playSound as playSfx } from "@/lib/soundManager";
 
 type Screen = "lobby" | "matchmaking" | "game" | "result";
 
