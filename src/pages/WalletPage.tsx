@@ -128,25 +128,18 @@ const WalletPage = () => {
         await supabase.storage.from("upi-qr-codes").upload(qrPath, compressed);
       }
 
-      const { error } = await supabase.from("withdrawal_requests").insert({
-        user_id: user.id,
-        amount,
-        platform_fee: fee,
-        net_amount: net,
-        upi_id: upiId || null,
-        mobile_number: mobileNumber || null,
-        qr_code_url: qrPath,
+      const { data: result, error } = await supabase.rpc("request_withdrawal", {
+        p_amount: amount,
+        p_upi_id: upiId || null,
+        p_mobile_number: mobileNumber || null,
+        p_qr_code_url: qrPath,
       });
       if (error) throw error;
-
-      // Deduct from wallet immediately
-      await supabase.from("profiles").update({ wallet_balance: balance - amount }).eq("user_id", user.id);
-      await supabase.from("wallet_transactions").insert({
-        user_id: user.id, type: "withdrawal", amount, fee, description: `Withdrawal request (net ₹${net.toFixed(2)})`, status: "pending",
-      });
+      const res = result as any;
+      if (!res?.success) throw new Error(res?.error || "Withdrawal failed");
 
       await refreshProfile();
-      toast.success(`Withdrawal requested! You'll receive ₹${net.toFixed(2)}`);
+      toast.success(`Withdrawal requested! You'll receive ₹${res.net.toFixed(2)}`);
       setWithdrawAmount(""); setUpiId(""); setMobileNumber(""); setQrFile(null);
       loadWithdrawals();
     } catch (err: any) {
