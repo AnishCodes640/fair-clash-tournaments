@@ -5,6 +5,7 @@ export interface BetResult {
   newBalance?: number;
   error?: string;
   transactionId?: string;
+  sessionId?: string;
 }
 
 export async function getWalletBalance(userId: string): Promise<number> {
@@ -16,73 +17,57 @@ export async function getWalletBalance(userId: string): Promise<number> {
   return Number(data?.wallet_balance || 0);
 }
 
-export async function placeBet(userId: string, amount: number, gameTitle: string): Promise<BetResult> {
-  const balance = await getWalletBalance(userId);
-  if (amount <= 0) return { success: false, error: "Invalid bet amount" };
-  if (amount > balance) return { success: false, error: "Insufficient balance" };
+export async function placeBet(userId: string, amount: number, gameTitle: string, gameId?: string): Promise<BetResult> {
+  const { data, error } = await supabase.rpc("place_bet", {
+    p_amount: amount,
+    p_game_id: gameId || gameTitle.toLowerCase().replace(/\s+/g, "_"),
+    p_game_title: gameTitle,
+  });
 
-  const newBalance = balance - amount;
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update({ wallet_balance: newBalance })
-    .eq("user_id", userId);
-  if (updateError) return { success: false, error: updateError.message };
+  if (error) return { success: false, error: error.message };
 
-  const { data: tx, error: txError } = await supabase
-    .from("wallet_transactions")
-    .insert({
-      user_id: userId,
-      type: "bet",
-      amount,
-      description: `Bet on ${gameTitle}`,
-      status: "completed",
-    })
-    .select("id")
-    .single();
-  if (txError) return { success: false, error: txError.message };
+  const result = data as any;
+  if (!result?.success) return { success: false, error: result?.error || "Bet failed" };
 
-  return { success: true, newBalance, transactionId: tx?.id };
+  return {
+    success: true,
+    newBalance: result.newBalance,
+    transactionId: result.transactionId,
+    sessionId: result.sessionId,
+  };
 }
 
-export async function addWinnings(userId: string, amount: number, gameTitle: string): Promise<BetResult> {
-  const balance = await getWalletBalance(userId);
-  const newBalance = balance + amount;
+export async function addWinnings(userId: string, amount: number, gameTitle: string, sessionId?: string): Promise<BetResult> {
+  const { data, error } = await supabase.rpc("add_winnings", {
+    p_amount: amount,
+    p_game_title: gameTitle,
+    p_session_id: sessionId || null,
+  });
 
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update({ wallet_balance: newBalance })
-    .eq("user_id", userId);
-  if (updateError) return { success: false, error: updateError.message };
+  if (error) return { success: false, error: error.message };
 
-  const { data: tx } = await supabase
-    .from("wallet_transactions")
-    .insert({
-      user_id: userId,
-      type: "winning",
-      amount,
-      description: `Won on ${gameTitle}`,
-      status: "completed",
-    })
-    .select("id")
-    .single();
+  const result = data as any;
+  if (!result?.success) return { success: false, error: result?.error || "Failed" };
 
-  return { success: true, newBalance, transactionId: tx?.id };
+  return {
+    success: true,
+    newBalance: result.newBalance,
+    transactionId: result.transactionId,
+  };
 }
 
 export async function refundBet(userId: string, amount: number, reason: string): Promise<BetResult> {
-  const balance = await getWalletBalance(userId);
-  const newBalance = balance + amount;
-
-  await supabase.from("profiles").update({ wallet_balance: newBalance }).eq("user_id", userId);
-  await supabase.from("wallet_transactions").insert({
-    user_id: userId,
-    type: "refund",
-    amount,
-    description: reason,
-    status: "completed",
+  const { data, error } = await supabase.rpc("refund_bet", {
+    p_amount: amount,
+    p_reason: reason,
   });
 
-  return { success: true, newBalance };
+  if (error) return { success: false, error: error.message };
+
+  const result = data as any;
+  if (!result?.success) return { success: false, error: result?.error || "Refund failed" };
+
+  return { success: true, newBalance: result.newBalance };
 }
 
 /**
