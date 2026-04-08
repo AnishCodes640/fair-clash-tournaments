@@ -150,9 +150,10 @@ const TicTacToePage = () => {
         <Link to="/games" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
         </Link>
+        <img src={ticTacToeLogo} alt="Tic Tac Toe" className="h-10 w-10 rounded-xl object-cover" />
         <div>
           <h1 className="text-xl font-bold tracking-tight">Tic Tac Toe</h1>
-          <p className="text-[10px] text-muted-foreground">Practice Mode · No Betting</p>
+          <p className="text-[10px] text-muted-foreground">Practice Mode · Free</p>
         </div>
       </div>
 
