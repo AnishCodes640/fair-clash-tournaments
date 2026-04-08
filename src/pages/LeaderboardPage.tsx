@@ -1,4 +1,4 @@
-import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target, Shield } from "lucide-react";
+import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target, Shield, Medal, Award, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -47,8 +47,8 @@ const LeaderboardPage = () => {
       sessions.forEach((s: any) => {
         if (!statsMap[s.user_id]) statsMap[s.user_id] = { totalGames: 0, wins: 0, losses: 0, totalBets: 0, totalWinnings: 0 };
         statsMap[s.user_id].totalGames++;
-        if (s.result === "win") statsMap[s.user_id].wins++;
-        if (s.result === "loss") statsMap[s.user_id].losses++;
+        if (s.result === "win" || s.result === "won") statsMap[s.user_id].wins++;
+        if (s.result === "loss" || s.result === "lost") statsMap[s.user_id].losses++;
         statsMap[s.user_id].totalBets += Number(s.bet_amount || 0);
         statsMap[s.user_id].totalWinnings += Number(s.win_amount || 0);
       });
@@ -110,7 +110,6 @@ const LeaderboardPage = () => {
 
   const handleSelectPlayer = async (p: PlayerData) => {
     setSelectedPlayer(p);
-    // Load game history for this player
     const { data } = await supabase
       .from("game_sessions")
       .select("*")
@@ -118,6 +117,21 @@ const LeaderboardPage = () => {
       .order("created_at", { ascending: false })
       .limit(20);
     setSelectedHistory(data || []);
+  };
+
+  const getRankIcon = (rank: number) => {
+    if (rank === 0) return <Crown className="h-4 w-4 text-yellow-500" />;
+    if (rank === 1) return <Medal className="h-4 w-4 text-gray-400" />;
+    if (rank === 2) return <Award className="h-4 w-4 text-orange-400" />;
+    return <span className="text-xs font-bold font-mono-num text-muted-foreground w-4 text-center">#{rank + 1}</span>;
+  };
+
+  const getRankStyle = (rank: number, isAdmin: boolean) => {
+    if (isAdmin) return "bg-red-500/8 border-l-2 border-l-red-500/40";
+    if (rank === 0) return "bg-yellow-500/8 border-l-2 border-l-yellow-500/40";
+    if (rank === 1) return "bg-gray-400/8 border-l-2 border-l-gray-400/40";
+    if (rank === 2) return "bg-orange-400/8 border-l-2 border-l-orange-400/40";
+    return "";
   };
 
   return (
@@ -157,19 +171,21 @@ const LeaderboardPage = () => {
                 <button key={p.user_id} onClick={() => handleSelectPlayer(p)}
                   className={cn("w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-accent/50 transition-colors",
                     isCurrentUser && "bg-primary/5",
-                    p.isAdmin && "bg-warning/5")}>
-                  <span className={cn("text-xs font-bold w-7 text-center font-mono-num",
-                    i === 0 ? "text-warning" : i === 1 ? "text-muted-foreground" : i === 2 ? "text-warning/60" : "text-muted-foreground")}>
-                    {i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
+                    getRankStyle(i, p.isAdmin))}>
+                  <span className="w-7 flex items-center justify-center">
+                    {getRankIcon(i)}
                   </span>
                   <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
                     {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> :
                       <span className="text-xs font-bold text-muted-foreground">{(p.display_name || p.username || "?")[0].toUpperCase()}</span>}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn("text-sm font-medium truncate flex items-center gap-1", p.isAdmin && "text-warning")}>
+                    <p className={cn("text-sm font-medium truncate flex items-center gap-1",
+                      p.isAdmin && "text-red-500")}>
                       {p.display_name || p.username}
-                      {p.isAdmin && <Shield className="h-3 w-3 text-warning" />}
+                      {p.isAdmin && (
+                        <span className="px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 text-[9px] font-bold tracking-wider uppercase">Admin</span>
+                      )}
                       {isCurrentUser && <span className="text-[10px] text-primary">(you)</span>}
                     </p>
                     <p className="text-[10px] text-muted-foreground">{p.totalGames} games · {p.wins}W/{p.losses}L</p>
@@ -193,10 +209,12 @@ function PlayerDetail({ player, history, onClose }: { player: PlayerData; histor
   const winRate = player.totalGames > 0 ? ((player.wins / player.totalGames) * 100).toFixed(0) : "0";
 
   return (
-    <div className="surface-card rounded-xl p-4 space-y-3 animate-fade-in border border-primary/20">
+    <div className={cn("surface-card rounded-xl p-4 space-y-3 animate-fade-in border",
+      player.isAdmin ? "border-red-500/30" : "border-primary/20")}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+          <div className={cn("h-12 w-12 rounded-full flex items-center justify-center overflow-hidden",
+            player.isAdmin ? "ring-2 ring-red-500/50" : "bg-secondary")}>
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -204,14 +222,17 @@ function PlayerDetail({ player, history, onClose }: { player: PlayerData; histor
             )}
           </div>
           <div>
-            <p className={cn("text-sm font-semibold flex items-center gap-1.5", player.isAdmin && "text-warning")}>
+            <p className={cn("text-sm font-semibold flex items-center gap-1.5",
+              player.isAdmin && "text-red-500")}>
               {player.display_name || player.username}
-              {player.isAdmin && <span className="px-1.5 py-0.5 rounded bg-warning/10 text-warning text-[10px] font-medium">Admin</span>}
+              {player.isAdmin && (
+                <span className="px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 text-[10px] font-bold">ADMIN</span>
+              )}
             </p>
             <p className="text-[10px] text-muted-foreground">Win rate: {winRate}%</p>
           </div>
         </div>
-        <button onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
+        <button onClick={onClose} className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center text-xs text-muted-foreground hover:text-foreground">✕</button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         <StatBox icon={Gamepad2} value={String(player.totalGames)} label="Games" />
@@ -221,7 +242,6 @@ function PlayerDetail({ player, history, onClose }: { player: PlayerData; histor
         <StatBox icon={TrendingUp} value={`₹${player.totalWinnings.toFixed(0)}`} label="Winnings" color="text-warning" />
       </div>
 
-      {/* Game History */}
       {history.length > 0 && (
         <div className="border-t border-border pt-3">
           <p className="text-xs font-semibold mb-2">Recent Games</p>
@@ -232,8 +252,9 @@ function PlayerDetail({ player, history, onClose }: { player: PlayerData; histor
                 <div className="flex items-center gap-2">
                   {Number(g.bet_amount) > 0 && <span className="text-muted-foreground">₹{Number(g.bet_amount).toFixed(0)}</span>}
                   <span className={cn("font-medium px-1.5 py-0.5 rounded",
-                    g.result === "win" ? "bg-success/10 text-success" : g.result === "loss" ? "bg-destructive/10 text-destructive" : "text-muted-foreground"
-                  )}>{g.result === "win" ? "Win" : g.result === "loss" ? "Loss" : g.result}</span>
+                    (g.result === "win" || g.result === "won") ? "bg-success/10 text-success" : 
+                    (g.result === "loss" || g.result === "lost") ? "bg-destructive/10 text-destructive" : "text-muted-foreground"
+                  )}>{(g.result === "win" || g.result === "won") ? "Win" : (g.result === "loss" || g.result === "lost") ? "Loss" : g.result}</span>
                 </div>
               </div>
             ))}

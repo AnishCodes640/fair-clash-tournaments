@@ -3,6 +3,7 @@ import { ArrowLeft, RotateCcw, Lightbulb, Eraser } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import sudokuLogo from "@/assets/sudoku-logo.png";
 
 type Difficulty = "easy" | "medium" | "hard";
 const REMOVE_MAP: Record<Difficulty, number> = { easy: 30, medium: 40, hard: 50 };
@@ -69,7 +70,6 @@ const SudokuPage = () => {
     const newErrors = new Set(errors);
     if (n !== solution[r][c]) { newErrors.add(`${r},${c}`); } else { newErrors.delete(`${r},${c}`); }
     setErrors(newErrors);
-    // Check win
     let complete = true;
     for (let i = 0; i < 9; i++) for (let j = 0; j < 9; j++) if (newBoard[i][j] !== solution[i][j]) complete = false;
     if (complete) { setWon(true); toast.success("Sudoku solved! 🎉"); }
@@ -100,11 +100,19 @@ const SudokuPage = () => {
     setErrors(newErrors);
   };
 
+  // Blue-themed cell coloring
+  const getCellBg = (r: number, c: number) => {
+    const boxR = Math.floor(r / 3);
+    const boxC = Math.floor(c / 3);
+    return (boxR + boxC) % 2 === 0 ? "bg-blue-50 dark:bg-blue-950/30" : "bg-blue-100/50 dark:bg-blue-900/20";
+  };
+
   return (
     <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center gap-3">
         <Link to="/games" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></Link>
-        <div><h1 className="text-xl font-bold tracking-tight">🔢 Sudoku</h1><p className="text-[10px] text-muted-foreground">Practice Mode · Free</p></div>
+        <img src={sudokuLogo} alt="Sudoku" className="h-10 w-10 rounded-xl object-cover" />
+        <div><h1 className="text-xl font-bold tracking-tight">Sudoku</h1><p className="text-[10px] text-muted-foreground">Practice Mode · Free</p></div>
       </div>
 
       <div className="flex gap-2">
@@ -119,21 +127,22 @@ const SudokuPage = () => {
 
       {/* Board */}
       <div className="w-full aspect-square max-w-[360px] mx-auto">
-        <div className="grid grid-cols-9 border-2 border-foreground/30 rounded-lg overflow-hidden">
+        <div className="grid grid-cols-9 border-2 border-blue-800/40 dark:border-blue-400/40 rounded-lg overflow-hidden">
           {board.map((row, r) => row.map((cell, c) => {
             const isSelected = selected?.[0] === r && selected?.[1] === c;
             const isSameRow = selected?.[0] === r;
             const isSameCol = selected?.[1] === c;
             const isSameBox = selected && Math.floor(selected[0] / 3) === Math.floor(r / 3) && Math.floor(selected[1] / 3) === Math.floor(c / 3);
             const isError = errors.has(`${r},${c}`);
-            const borderR = (c + 1) % 3 === 0 && c < 8 ? "border-r-2 border-r-foreground/30" : "border-r border-r-border";
-            const borderB = (r + 1) % 3 === 0 && r < 8 ? "border-b-2 border-b-foreground/30" : "border-b border-b-border";
+            const borderR = (c + 1) % 3 === 0 && c < 8 ? "border-r-2 border-r-blue-800/40 dark:border-r-blue-400/40" : "border-r border-r-blue-300/30 dark:border-r-blue-700/30";
+            const borderB = (r + 1) % 3 === 0 && r < 8 ? "border-b-2 border-b-blue-800/40 dark:border-b-blue-400/40" : "border-b border-b-blue-300/30 dark:border-b-blue-700/30";
             return (
               <button key={`${r}-${c}`} onClick={() => setSelected([r, c])}
                 className={cn("aspect-square flex items-center justify-center text-sm font-bold transition-all", borderR, borderB,
-                  isSelected ? "bg-primary/20" : (isSameRow || isSameCol || isSameBox) ? "bg-accent/50" : "bg-card",
-                  isError && "text-destructive bg-destructive/10",
-                  fixed[r]?.[c] ? "text-foreground" : "text-primary",
+                  getCellBg(r, c),
+                  isSelected ? "!bg-blue-400/30 dark:!bg-blue-500/30" : (isSameRow || isSameCol || isSameBox) ? "!bg-blue-200/30 dark:!bg-blue-800/20" : "",
+                  isError && "!text-destructive !bg-destructive/10",
+                  fixed[r]?.[c] ? "text-foreground" : "text-blue-600 dark:text-blue-400",
                 )}>
                 {cell > 0 ? cell : ""}
               </button>
@@ -166,7 +175,7 @@ const SudokuPage = () => {
 
       {won && (
         <div className="surface-card rounded-xl p-6 text-center space-y-3 border border-success/30">
-          <p className="text-lg font-bold text-success">🎉 Sudoku Solved!</p>
+          <p className="text-lg font-bold text-success">Sudoku Solved!</p>
           <button onClick={() => newGame(difficulty)}
             className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Play Again</button>
         </div>
