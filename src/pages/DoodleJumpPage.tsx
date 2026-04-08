@@ -3,9 +3,12 @@ import { ArrowLeft, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import doodleJumpLogo from "@/assets/doodle-jump-logo.jpg";
+import doodleCharacter from "@/assets/doodle-character.png";
+import { playSound } from "@/lib/soundManager";
 
 const DoodleJumpPage = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const charImgRef = useRef<HTMLImageElement | null>(null);
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(() => Number(localStorage.getItem("dj_hs") || 0));
   const [gameOver, setGameOver] = useState(false);
@@ -15,30 +18,38 @@ const DoodleJumpPage = () => {
 
   const CANVAS_W = 400;
   const CANVAS_H = 600;
-  const PLAYER_W = 40;
-  const PLAYER_H = 40;
+  const PLAYER_W = 48;
+  const PLAYER_H = 48;
   const PLATFORM_W = 70;
-  const PLATFORM_H = 12;
-  const GRAVITY = 0.4;
-  const JUMP_VEL = -12;
+  const PLATFORM_H = 14;
+  const GRAVITY = 0.35;
+  const JUMP_VEL = -11;
   const PLATFORM_COUNT = 8;
+
+  // Preload character image
+  useEffect(() => {
+    const img = new Image();
+    img.src = doodleCharacter;
+    img.onload = () => { charImgRef.current = img; };
+  }, []);
 
   type Platform = { x: number; y: number; w: number; type: "normal" | "moving" | "breakable"; dx: number; broken: boolean };
 
   const createPlatforms = useCallback((startY: number): Platform[] => {
     const platforms: Platform[] = [];
+    const gap = CANVAS_H / PLATFORM_COUNT;
     for (let i = 0; i < PLATFORM_COUNT; i++) {
-      const y = startY - i * (CANVAS_H / PLATFORM_COUNT);
+      const y = startY - i * gap;
       const r = Math.random();
       let type: Platform["type"] = "normal";
-      if (r > 0.85) type = "breakable";
-      else if (r > 0.7) type = "moving";
+      if (i > 2 && r > 0.85) type = "breakable";
+      else if (i > 1 && r > 0.7) type = "moving";
       platforms.push({
         x: Math.random() * (CANVAS_W - PLATFORM_W),
         y,
         w: PLATFORM_W,
         type,
-        dx: type === "moving" ? (Math.random() > 0.5 ? 1.5 : -1.5) : 0,
+        dx: type === "moving" ? (Math.random() > 0.5 ? 1.2 : -1.2) : 0,
         broken: false,
       });
     }
@@ -47,14 +58,12 @@ const DoodleJumpPage = () => {
 
   const startGame = useCallback(() => {
     const platforms = createPlatforms(CANVAS_H - 30);
-    // Ensure first platform is under player
     platforms[0] = { x: CANVAS_W / 2 - PLATFORM_W / 2, y: CANVAS_H - 50, w: PLATFORM_W, type: "normal", dx: 0, broken: false };
 
     gameRef.current = {
       player: { x: CANVAS_W / 2 - PLAYER_W / 2, y: CANVAS_H - 90, vy: JUMP_VEL, vx: 0 },
       platforms,
       score: 0,
-      maxHeight: 0,
       tiltX: 0,
       keys: { left: false, right: false },
     };
@@ -63,7 +72,7 @@ const DoodleJumpPage = () => {
     setStarted(true);
   }, [createPlatforms]);
 
-  // Input handling
+  // Input
   useEffect(() => {
     if (!started || gameOver) return;
     const g = gameRef.current;
@@ -77,31 +86,21 @@ const DoodleJumpPage = () => {
       if (e.key === "ArrowLeft" || e.key === "a") g.keys.left = false;
       if (e.key === "ArrowRight" || e.key === "d") g.keys.right = false;
     };
-
-    let lastAlpha: number | null = null;
     const onOrientation = (e: DeviceOrientationEvent) => {
-      if (e.gamma !== null) {
-        g.tiltX = e.gamma / 10;
-      }
+      if (e.gamma !== null) g.tiltX = e.gamma / 10;
     };
-
     const onTouchStart = (e: TouchEvent) => {
       const x = e.touches[0].clientX;
-      const w = window.innerWidth;
-      if (x < w / 2) g.keys.left = true;
+      if (x < window.innerWidth / 2) g.keys.left = true;
       else g.keys.right = true;
     };
-    const onTouchEnd = () => {
-      g.keys.left = false;
-      g.keys.right = false;
-    };
+    const onTouchEnd = () => { g.keys.left = false; g.keys.right = false; };
 
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("deviceorientation", onOrientation);
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
-
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
@@ -123,7 +122,6 @@ const DoodleJumpPage = () => {
       const g = gameRef.current;
       if (!g) return;
 
-      // Player movement
       let moveX = g.tiltX;
       if (g.keys.left) moveX -= 5;
       if (g.keys.right) moveX += 5;
@@ -131,11 +129,9 @@ const DoodleJumpPage = () => {
       g.player.vy += GRAVITY;
       g.player.y += g.player.vy;
 
-      // Wrap horizontally
       if (g.player.x > CANVAS_W) g.player.x = -PLAYER_W;
       if (g.player.x + PLAYER_W < 0) g.player.x = CANVAS_W;
 
-      // Move platforms
       g.platforms.forEach((p: Platform) => {
         if (p.type === "moving") {
           p.x += p.dx;
@@ -143,53 +139,49 @@ const DoodleJumpPage = () => {
         }
       });
 
-      // Collision with platforms (only when falling)
       if (g.player.vy >= 0) {
         g.platforms.forEach((p: Platform) => {
           if (p.broken) return;
           const px = g.player.x + PLAYER_W / 2;
           const py = g.player.y + PLAYER_H;
           if (px > p.x && px < p.x + p.w && py >= p.y && py <= p.y + PLATFORM_H + g.player.vy) {
-            if (p.type === "breakable") {
-              p.broken = true;
-              return;
-            }
+            if (p.type === "breakable") { p.broken = true; return; }
             g.player.vy = JUMP_VEL;
             g.player.y = p.y - PLAYER_H;
+            playSound("jump");
           }
         });
       }
 
-      // Scroll up when player goes above middle
       if (g.player.y < CANVAS_H / 2) {
         const diff = CANVAS_H / 2 - g.player.y;
         g.player.y = CANVAS_H / 2;
         g.score += Math.floor(diff);
         g.platforms.forEach((p: Platform) => { p.y += diff; });
 
-        // Remove platforms below screen, add new ones above
         g.platforms = g.platforms.filter((p: Platform) => p.y < CANVAS_H + 50);
         while (g.platforms.length < PLATFORM_COUNT) {
           const highestY = Math.min(...g.platforms.map((p: Platform) => p.y));
+          const gap = 55 + Math.random() * 50;
           const r = Math.random();
           let type: Platform["type"] = "normal";
           if (r > 0.85) type = "breakable";
           else if (r > 0.7) type = "moving";
           g.platforms.push({
             x: Math.random() * (CANVAS_W - PLATFORM_W),
-            y: highestY - (60 + Math.random() * 60),
+            y: highestY - gap,
             w: PLATFORM_W,
             type,
-            dx: type === "moving" ? (Math.random() > 0.5 ? 1.5 : -1.5) : 0,
+            dx: type === "moving" ? (Math.random() > 0.5 ? 1.2 : -1.2) : 0,
             broken: false,
           });
         }
       }
 
-      // Game over
       if (g.player.y > CANVAS_H) {
         setGameOver(true);
         setScore(g.score);
+        playSound("crash");
         const hs = Number(localStorage.getItem("dj_hs") || 0);
         if (g.score > hs) {
           localStorage.setItem("dj_hs", String(g.score));
@@ -207,20 +199,29 @@ const DoodleJumpPage = () => {
       canvas.height = CANVAS_H * dpr;
       ctx.scale(dpr, dpr);
 
-      // Background gradient
+      // Sky background
       const bg = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-      bg.addColorStop(0, "#0f172a");
-      bg.addColorStop(1, "#1e293b");
+      bg.addColorStop(0, "#87CEEB");
+      bg.addColorStop(1, "#E0F0FF");
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
       // Platforms
       g.platforms.forEach((p: Platform) => {
         if (p.broken) return;
-        ctx.fillStyle = p.type === "normal" ? "#22c55e" : p.type === "moving" ? "#3b82f6" : "#f59e0b";
+        if (p.type === "normal") {
+          ctx.fillStyle = "#22c55e";
+        } else if (p.type === "moving") {
+          ctx.fillStyle = "#3b82f6";
+        } else {
+          ctx.fillStyle = "#f59e0b";
+        }
         ctx.beginPath();
-        ctx.roundRect(p.x, p.y, p.w, PLATFORM_H, 4);
+        ctx.roundRect(p.x, p.y, p.w, PLATFORM_H, 6);
         ctx.fill();
+        // Add shine
+        ctx.fillStyle = "rgba(255,255,255,0.3)";
+        ctx.fillRect(p.x + 4, p.y + 2, p.w - 8, 4);
         if (p.type === "breakable") {
           ctx.strokeStyle = "#92400e";
           ctx.lineWidth = 1;
@@ -233,24 +234,18 @@ const DoodleJumpPage = () => {
         }
       });
 
-      // Player (doodler)
+      // Player — use character image if loaded
       const px = g.player.x;
       const py = g.player.y;
-      // Body
-      ctx.fillStyle = "#fbbf24";
-      ctx.beginPath();
-      ctx.ellipse(px + PLAYER_W / 2, py + PLAYER_H / 2, PLAYER_W / 2 - 2, PLAYER_H / 2 - 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // Eyes
-      ctx.fillStyle = "#1e293b";
-      ctx.beginPath();
-      ctx.arc(px + PLAYER_W / 2 - 7, py + PLAYER_H / 2 - 5, 3, 0, Math.PI * 2);
-      ctx.arc(px + PLAYER_W / 2 + 7, py + PLAYER_H / 2 - 5, 3, 0, Math.PI * 2);
-      ctx.fill();
-      // Feet
-      ctx.fillStyle = "#f97316";
-      ctx.fillRect(px + 5, py + PLAYER_H - 6, 10, 6);
-      ctx.fillRect(px + PLAYER_W - 15, py + PLAYER_H - 6, 10, 6);
+      if (charImgRef.current) {
+        ctx.drawImage(charImgRef.current, px, py, PLAYER_W, PLAYER_H);
+      } else {
+        // Fallback circle
+        ctx.fillStyle = "#fbbf24";
+        ctx.beginPath();
+        ctx.ellipse(px + PLAYER_W / 2, py + PLAYER_H / 2, PLAYER_W / 2 - 2, PLAYER_H / 2 - 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       animRef.current = requestAnimationFrame(loop);
     };
@@ -304,9 +299,37 @@ const DoodleJumpPage = () => {
         )}
       </div>
 
+      {/* Mobile control buttons */}
+      {started && !gameOver && (
+        <div className="flex gap-3 justify-center">
+          <button
+            onTouchStart={() => { if (gameRef.current) gameRef.current.keys.left = true; }}
+            onTouchEnd={() => { if (gameRef.current) gameRef.current.keys.left = false; }}
+            onMouseDown={() => { if (gameRef.current) gameRef.current.keys.left = true; }}
+            onMouseUp={() => { if (gameRef.current) gameRef.current.keys.left = false; }}
+            className="h-14 w-20 rounded-xl bg-secondary/80 text-lg font-bold flex items-center justify-center active:bg-primary/20 transition-colors select-none"
+          >
+            ← Left
+          </button>
+          <button
+            onTouchStart={() => { if (gameRef.current) gameRef.current.keys.right = true; }}
+            onTouchEnd={() => { if (gameRef.current) gameRef.current.keys.right = false; }}
+            onMouseDown={() => { if (gameRef.current) gameRef.current.keys.right = true; }}
+            onMouseUp={() => { if (gameRef.current) gameRef.current.keys.right = false; }}
+            className="h-14 w-20 rounded-xl bg-secondary/80 text-lg font-bold flex items-center justify-center active:bg-primary/20 transition-colors select-none"
+          >
+            Right →
+          </button>
+        </div>
+      )}
+
       <div className="text-[10px] text-muted-foreground text-center space-y-0.5">
-        <p>🟢 Normal · 🔵 Moving · 🟡 Breakable</p>
-        <p>Arrow keys / tilt to move · Tap left/right on mobile</p>
+        <p className="flex items-center justify-center gap-2">
+          <span className="inline-block w-3 h-3 rounded bg-[#22c55e]" /> Normal
+          <span className="inline-block w-3 h-3 rounded bg-[#3b82f6]" /> Moving
+          <span className="inline-block w-3 h-3 rounded bg-[#f59e0b]" /> Breakable
+        </p>
+        <p>Arrow keys / tilt to move · Tap buttons on mobile</p>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ArrowLeft, RotateCcw, Pause, Play } from "lucide-react";
+import { ArrowLeft, RotateCcw, Pause, Play, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -24,7 +24,7 @@ const SnakePage = () => {
   const [started, setStarted] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const dirRef = useRef<Dir>("RIGHT");
-  const dirChangedRef = useRef(false); // debounce direction changes per tick
+  const dirChangedRef = useRef(false);
   const intervalRef = useRef<number>(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -44,7 +44,7 @@ const SnakePage = () => {
   useEffect(() => {
     if (!started || gameOver || paused) return;
     intervalRef.current = window.setInterval(() => {
-      dirChangedRef.current = false; // allow one direction change per tick
+      dirChangedRef.current = false;
       setSnake(prev => {
         const [hx, hy] = prev[0];
         let nx = hx, ny = hy;
@@ -77,7 +77,7 @@ const SnakePage = () => {
   }, [started, gameOver, paused, difficulty, highScore, spawnFood]);
 
   const changeDir = useCallback((nd: Dir) => {
-    if (dirChangedRef.current) return; // only one change per tick
+    if (dirChangedRef.current) return;
     if (nd !== OPP[dirRef.current]) {
       dirRef.current = nd;
       setDir(nd);
@@ -85,7 +85,6 @@ const SnakePage = () => {
     }
   }, []);
 
-  // Keyboard
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       const map: Record<string, Dir> = { ArrowUp: "UP", ArrowDown: "DOWN", ArrowLeft: "LEFT", ArrowRight: "RIGHT", w: "UP", s: "DOWN", a: "LEFT", d: "RIGHT" };
@@ -98,7 +97,6 @@ const SnakePage = () => {
     return () => window.removeEventListener("keydown", handleKey);
   }, [changeDir]);
 
-  // Swipe detection on game area
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }, []);
@@ -116,6 +114,11 @@ const SnakePage = () => {
     }
     touchStartRef.current = null;
   }, [changeDir]);
+
+  // Alternating green grass-like grid
+  const getCellColor = (x: number, y: number) => {
+    return (x + y) % 2 === 0 ? "#4ade80" : "#22c55e";
+  };
 
   return (
     <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
@@ -141,26 +144,47 @@ const SnakePage = () => {
       </div>
 
       <div
-        className="relative w-full aspect-square rounded-xl overflow-hidden border border-border bg-card"
+        className="relative w-full aspect-square rounded-xl overflow-hidden border-2 border-green-700"
         style={{ touchAction: "none" }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
         <svg viewBox="0 0 100 100" className="w-full h-full">
-          <rect width="100" height="100" fill="hsl(var(--card))" />
-          {Array.from({ length: GRID + 1 }).map((_, i) => (
-            <g key={i}>
-              <line x1={i * CELL_SIZE} y1="0" x2={i * CELL_SIZE} y2="100" stroke="hsl(var(--border))" strokeWidth="0.15" />
-              <line x1="0" y1={i * CELL_SIZE} x2="100" y2={i * CELL_SIZE} stroke="hsl(var(--border))" strokeWidth="0.15" />
-            </g>
-          ))}
+          {/* Grass-like alternating green grid */}
+          {Array.from({ length: GRID }).map((_, x) =>
+            Array.from({ length: GRID }).map((_, y) => (
+              <rect key={`${x}-${y}`}
+                x={x * CELL_SIZE} y={y * CELL_SIZE}
+                width={CELL_SIZE} height={CELL_SIZE}
+                fill={getCellColor(x, y)} />
+            ))
+          )}
+          {/* Food */}
           <circle cx={food[0] * CELL_SIZE + CELL_SIZE / 2} cy={food[1] * CELL_SIZE + CELL_SIZE / 2}
-            r={CELL_SIZE * 0.4} fill="hsl(var(--destructive))" className="animate-pulse" />
+            r={CELL_SIZE * 0.4} fill="#ef4444" className="animate-pulse" />
+          <circle cx={food[0] * CELL_SIZE + CELL_SIZE / 2 - 0.5} cy={food[1] * CELL_SIZE + CELL_SIZE / 2 - 0.8}
+            r={CELL_SIZE * 0.12} fill="#dc2626" />
+          {/* Snake */}
           {snake.map(([x, y], i) => (
-            <rect key={i} x={x * CELL_SIZE + 0.3} y={y * CELL_SIZE + 0.3}
-              width={CELL_SIZE - 0.6} height={CELL_SIZE - 0.6} rx="0.8"
-              fill={i === 0 ? "hsl(var(--primary))" : `hsl(var(--primary) / ${Math.max(0.3, 0.8 - i * 0.01)})`} />
+            <rect key={i} x={x * CELL_SIZE + 0.2} y={y * CELL_SIZE + 0.2}
+              width={CELL_SIZE - 0.4} height={CELL_SIZE - 0.4} rx="1"
+              fill={i === 0 ? "#1d4ed8" : "#3b82f6"}
+              stroke={i === 0 ? "#1e40af" : "transparent"} strokeWidth="0.3" />
           ))}
+          {/* Snake eyes on head */}
+          {snake.length > 0 && (() => {
+            const [hx, hy] = snake[0];
+            const cx = hx * CELL_SIZE + CELL_SIZE / 2;
+            const cy = hy * CELL_SIZE + CELL_SIZE / 2;
+            return (
+              <>
+                <circle cx={cx - 1} cy={cy - 0.8} r={0.7} fill="white" />
+                <circle cx={cx + 1} cy={cy - 0.8} r={0.7} fill="white" />
+                <circle cx={cx - 1} cy={cy - 0.8} r={0.35} fill="#1e293b" />
+                <circle cx={cx + 1} cy={cy - 0.8} r={0.35} fill="#1e293b" />
+              </>
+            );
+          })()}
         </svg>
 
         {!started && (
@@ -181,18 +205,26 @@ const SnakePage = () => {
         )}
       </div>
 
-      {/* Mobile D-pad + swipe hint */}
+      {/* D-pad with icons instead of arrows */}
       <div className="grid grid-cols-3 gap-2 max-w-[200px] mx-auto">
         <div />
-        <button onClick={() => changeDir("UP")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95 transition-transform">↑</button>
+        <button onClick={() => changeDir("UP")} className="h-12 rounded-lg bg-secondary flex items-center justify-center active:scale-95 active:bg-primary/20 transition-all">
+          <ChevronUp className="h-5 w-5" />
+        </button>
         <div />
-        <button onClick={() => changeDir("LEFT")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95 transition-transform">←</button>
-        <button onClick={() => setPaused(!paused)} className="h-12 rounded-lg bg-secondary flex items-center justify-center active:scale-95 transition-transform">
+        <button onClick={() => changeDir("LEFT")} className="h-12 rounded-lg bg-secondary flex items-center justify-center active:scale-95 active:bg-primary/20 transition-all">
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button onClick={() => setPaused(!paused)} className="h-12 rounded-lg bg-secondary flex items-center justify-center active:scale-95 transition-all">
           {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
         </button>
-        <button onClick={() => changeDir("RIGHT")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95 transition-transform">→</button>
+        <button onClick={() => changeDir("RIGHT")} className="h-12 rounded-lg bg-secondary flex items-center justify-center active:scale-95 active:bg-primary/20 transition-all">
+          <ChevronRight className="h-5 w-5" />
+        </button>
         <div />
-        <button onClick={() => changeDir("DOWN")} className="h-12 rounded-lg bg-secondary flex items-center justify-center text-lg active:scale-95 transition-transform">↓</button>
+        <button onClick={() => changeDir("DOWN")} className="h-12 rounded-lg bg-secondary flex items-center justify-center active:scale-95 active:bg-primary/20 transition-all">
+          <ChevronDown className="h-5 w-5" />
+        </button>
         <div />
       </div>
       <p className="text-[10px] text-center text-muted-foreground">Swipe on the board or use buttons to control</p>

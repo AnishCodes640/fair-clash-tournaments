@@ -12,24 +12,14 @@ import { ArrowLeft, Wallet, Users, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Tro
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import ludoClashLogo from "@/assets/ludo-clash-logo.jpg";
+import ludoBoard from "@/assets/ludo-board.jpg";
+import { playSound as playSfx } from "@/lib/soundManager";
 
 type Screen = "lobby" | "matchmaking" | "game" | "result";
 
 const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
 
-// Sound effects
-const audioCtx = typeof AudioContext !== "undefined" ? new AudioContext() : null;
-function playSound(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.12) {
-  if (!audioCtx) return;
-  try {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = type; osc.frequency.value = freq; gain.gain.value = vol;
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-    osc.stop(audioCtx.currentTime + dur);
-  } catch {}
-}
+// Sound effects handled by soundManager
 
 // Board rendering helpers — maps piece state to SVG coordinates on a 15x15 grid
 // Based on standard Ludo board layout (reference image: green top-left, yellow top-right, blue bottom-right, red bottom-left)
@@ -303,14 +293,14 @@ const LudoPage = () => {
     if (gameState.currentTurn !== myPlayerIndex) return;
 
     setRolling(true);
-    playSound(300, 0.15, "square", 0.08);
+    playSfx("diceRoll");
     const dice = rollDice();
 
     await new Promise(r => setTimeout(r, 500));
     setDiceValue(dice);
     setRolling(false);
     setDiceRolled(true);
-    playSound(500 + dice * 50, 0.2, "sine", 0.1);
+    playSfx("diceRoll");
 
     const moves = getValidMoves(gameState, myPlayerIndex, dice);
     if (moves.length === 0) {
@@ -330,12 +320,12 @@ const LudoPage = () => {
     if (!roomId || !diceRolled || diceValue === null) return;
     if (!validMoves.includes(pieceIndex)) return;
 
-    playSound(600, 0.1, "sine", 0.08);
+    playSfx("tokenMove");
     const result = movePiece(gameState, myPlayerIndex, pieceIndex, diceValue);
 
     if (result.killed) {
       toast("Piece captured! 💀", { icon: "⚔️" });
-      playSound(200, 0.3, "sawtooth", 0.1);
+      playSfx("kill");
     }
 
     const newBoardState = JSON.parse(JSON.stringify({
@@ -359,7 +349,7 @@ const LudoPage = () => {
 
     if (result.newState.winner !== null) {
       const winnerPlayer = players[result.newState.winner];
-      playSound(880, 0.5, "sine", 0.15);
+      playSfx("win");
       if (winnerPlayer?.user_id === user?.id) {
         if (entryFee > 0) {
           const prizePool = entryFee * players.length;
@@ -529,52 +519,10 @@ const LudoPage = () => {
 
       {/* SVG Ludo Board */}
       <div className="relative w-full aspect-square max-w-[400px] mx-auto rounded-xl overflow-hidden shadow-lg">
-        <svg viewBox="0 0 100 100" className="w-full h-full">
-          {/* Board background */}
-          <rect x="0" y="0" width="100" height="100" fill="hsl(var(--card))" />
-
-          {/* Home quadrants */}
-          <rect x="0" y="60" width="40" height="40" rx="1" fill="#ef444420" stroke="#ef444440" strokeWidth="0.3" />
-          <rect x="0" y="0" width="40" height="40" rx="1" fill="#22c55e20" stroke="#22c55e40" strokeWidth="0.3" />
-          <rect x="60" y="0" width="40" height="40" rx="1" fill="#eab30820" stroke="#eab30840" strokeWidth="0.3" />
-          <rect x="60" y="60" width="40" height="40" rx="1" fill="#3b82f620" stroke="#3b82f640" strokeWidth="0.3" />
-
-          {/* Home yard circles (4 per player) */}
-          {[0, 1, 2, 3].map(pIdx =>
-            YARDS[pIdx].map(([gx, gy], pi) => (
-              <circle key={`yard-${pIdx}-${pi}`}
-                cx={gx * CELL + CELL / 2} cy={gy * CELL + CELL / 2} r={CELL * 0.4}
-                fill={PLAYER_COLORS[pIdx] + "30"} stroke={PLAYER_COLORS[pIdx] + "60"} strokeWidth="0.3" />
-            ))
-          )}
-
-          {/* Center home triangles */}
-          <polygon points="43.3,43.3 50,33.3 56.7,43.3" fill="#eab30840" stroke="#eab30860" strokeWidth="0.2" />
-          <polygon points="43.3,56.7 50,66.7 56.7,56.7" fill="#ef444440" stroke="#ef444460" strokeWidth="0.2" />
-          <polygon points="33.3,43.3 43.3,50 33.3,56.7" fill="#22c55e40" stroke="#22c55e60" strokeWidth="0.2" />
-          <polygon points="66.7,43.3 56.7,50 66.7,56.7" fill="#3b82f640" stroke="#3b82f660" strokeWidth="0.2" />
-
-          {/* Home stretch colored paths */}
-          {[0, 1, 2, 3].map(pIdx =>
-            HOME_STRETCHES[pIdx].map(([gx, gy], si) => (
-              <rect key={`hs-${pIdx}-${si}`}
-                x={gx * CELL + 0.5} y={gy * CELL + 0.5}
-                width={CELL - 1} height={CELL - 1} rx="0.5"
-                fill={PLAYER_COLORS[pIdx] + "25"} stroke={PLAYER_COLORS[pIdx] + "40"} strokeWidth="0.15" />
-            ))
-          )}
-
-          {/* Safe positions markers */}
-          {[0, 8, 13, 21, 26, 34, 39, 47].map(pos => {
-            const coords = MAIN_PATH[pos];
-            if (!coords) return null;
-            return (
-              <text key={`safe-${pos}`} x={coords[0] * CELL + CELL / 2} y={coords[1] * CELL + CELL / 2 + 1}
-                textAnchor="middle" dominantBaseline="middle" fill="hsl(var(--muted-foreground))" fontSize="2.5" opacity="0.4">★</text>
-            );
-          })}
-
-          {/* Render pieces */}
+        {/* Board image background */}
+        <img src={ludoBoard} alt="Ludo Board" className="absolute inset-0 w-full h-full object-cover" />
+        <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
+          {/* Render pieces on top of board image */}
           {gameState.pieces.map((playerPieces, pIdx) =>
             playerPieces.map((pos, pieceIdx) => {
               const [cx, cy] = getPieceXY(pIdx, pos, pieceIdx);
@@ -583,12 +531,12 @@ const LudoPage = () => {
               return (
                 <g key={`${pIdx}-${pieceIdx}`}>
                   {isClickable && (
-                    <circle cx={cx} cy={cy} r={CELL * 0.55} fill={PLAYER_COLORS[pIdx] + "30"} className="animate-pulse" />
+                    <circle cx={cx} cy={cy} r={CELL * 0.55} fill={PLAYER_COLORS[pIdx] + "40"} className="animate-pulse" />
                   )}
-                  <circle cx={cx} cy={cy} r={CELL * 0.35}
-                    fill={PLAYER_COLORS[pIdx]} stroke="white" strokeWidth="0.5"
+                  <circle cx={cx} cy={cy} r={CELL * 0.38}
+                    fill={PLAYER_COLORS[pIdx]} stroke="white" strokeWidth="0.6"
                     className={cn("transition-all duration-300", isClickable && "cursor-pointer")}
-                    style={{ filter: pos === 200 ? "brightness(1.3)" : undefined }}
+                    style={{ filter: pos === 200 ? "brightness(1.3) drop-shadow(0 0 2px gold)" : "drop-shadow(0 1px 1px rgba(0,0,0,0.3))" }}
                     onClick={() => isClickable && handleMovePiece(pieceIdx)} />
                   <text x={cx} y={cy + 0.8} textAnchor="middle" dominantBaseline="middle"
                     fill="white" fontSize="2.5" fontWeight="bold" style={{ pointerEvents: "none" }}>

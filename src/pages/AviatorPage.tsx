@@ -7,30 +7,18 @@ import { toast } from "sonner";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import aviatorLogo from "@/assets/aviator-logo.jpg";
+import { playSound as playSfx, setSoundEnabled, isSoundEnabled } from "@/lib/soundManager";
 
 type GamePhase = "waiting" | "flying" | "crashed" | "cashed_out";
 
 interface RoundHistory { multiplier: number; crashed: boolean; bet: number; won: number; }
 
+// Controlled probability-based multiplier — strict 8x cap
 function generateCrashPoint(): number {
   const r = Math.random();
-  if (r < 0.60) return 1.01 + Math.random() * 1.49;
-  else if (r < 0.85) return 2.5 + Math.random() * 2.5;
-  else if (r < 0.97) return 5 + Math.random() * 3;
-  else return 8 + Math.random() * 7;
-}
-
-const audioCtx = typeof AudioContext !== "undefined" ? new AudioContext() : null;
-function playSound(freq: number, duration: number, type: OscillatorType = "sine", volume = 0.15) {
-  if (!audioCtx) return;
-  try {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = type; osc.frequency.value = freq; gain.gain.value = volume;
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-    osc.stop(audioCtx.currentTime + duration);
-  } catch {}
+  if (r < 0.70) return 1.01 + Math.random() * 1.49; // 70% → 1.01x–2.5x
+  if (r < 0.95) return 2.5 + Math.random() * 2.5;   // 25% → 2.5x–5.0x
+  return 5.0 + Math.random() * 3.0;                  // 5%  → 5.0x–8.0x (max)
 }
 
 const AviatorPage = () => {
@@ -55,8 +43,8 @@ const AviatorPage = () => {
   const phaseRef = useRef<GamePhase>("waiting");
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
+  useEffect(() => { setSoundEnabled(soundOn); }, [soundOn]);
 
-  // Sync balance from profile and direct fetch
   useEffect(() => {
     if (user) getWalletBalance(user.id).then(setBalance);
   }, [user]);
@@ -126,33 +114,40 @@ const AviatorPage = () => {
     if (crashed) { ctx.font = "bold 16px 'Inter', sans-serif"; ctx.fillStyle = "#ef4444"; ctx.fillText("CRASHED!", w / 2, h * 0.45 + 30); }
   }, []);
 
+  // Slower growth rate for more suspense; strict cap at 8x
+  const GROWTH_RATE = 0.06;
+
   const startRound = useCallback(() => {
-    const cp = generateCrashPoint();
+    const cp = Math.min(generateCrashPoint(), 8.0); // Hard cap at 8x
     crashPointRef.current = cp; setCrashPoint(cp);
     setPhase("flying"); setMultiplier(1.0);
     startTimeRef.current = performance.now();
-    if (soundOn) playSound(220, 0.3, "sawtooth", 0.08);
+    playSfx("engine");
 
     const animate = (time: number) => {
       const elapsed = (time - startTimeRef.current) / 1000;
-      const currentMult = Math.pow(Math.E, elapsed * 0.08);
+      const currentMult = Math.min(Math.exp(elapsed * GROWTH_RATE), 8.0);
       if (currentMult >= crashPointRef.current) {
         setMultiplier(crashPointRef.current); setPhase("crashed");
         drawGraph(crashPointRef.current, true);
-        if (soundOn) playSound(100, 0.5, "square", 0.12);
+        playSfx("crash");
         return;
       }
       setMultiplier(currentMult); drawGraph(currentMult, false);
       animationRef.current = requestAnimationFrame(animate);
     };
     animationRef.current = requestAnimationFrame(animate);
-  }, [drawGraph, soundOn]);
+  }, [drawGraph]);
 
   useEffect(() => {
     if (phase === "waiting") {
       drawGraph(1.0, false); setCountdown(7);
       const interval = setInterval(() => {
-        setCountdown((prev) => { if (prev <= 1) { clearInterval(interval); startRound(); return 7; } return prev - 1; });
+        setCountdown((prev) => {
+          if (prev <= 1) { clearInterval(interval); startRound(); return 7; }
+          if (prev <= 3) playSfx("countdown");
+          return prev - 1;
+        });
       }, 1000);
       return () => clearInterval(interval);
     }
@@ -160,7 +155,7 @@ const AviatorPage = () => {
 
   useEffect(() => { return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); }; }, []);
 
-  // Handle crash result
+  // Handle crash result — record loss
   useEffect(() => {
     if (phase === "crashed") {
       if (currentBet > 0) {
@@ -169,6 +164,7 @@ const AviatorPage = () => {
           supabase.from("game_sessions").insert({ user_id: user.id, game_id: "aviator", game_title: "Aviator Crash", bet_amount: currentBet, win_amount: 0, result: "loss" });
         }
         setCurrentBet(0);
+        playSfx("lose");
         toast.error(`Crashed at ${crashPoint.toFixed(2)}x — Bet lost!`);
       } else {
         setHistory((prev) => [{ multiplier: crashPoint, crashed: true, bet: 0, won: 0 }, ...prev.slice(0, 19)]);
@@ -190,7 +186,7 @@ const AviatorPage = () => {
     setCurrentBet(amount);
     setBalance(result.newBalance || 0);
     await refreshProfile();
-    if (soundOn) playSound(440, 0.15, "sine", 0.1);
+    playSfx("bet");
     toast.success(`Bet placed: ₹${amount}`);
   };
 
@@ -205,16 +201,15 @@ const AviatorPage = () => {
     setPhase("cashed_out");
     const betForSession = currentBet;
     setCurrentBet(0);
-    if (soundOn) playSound(880, 0.3, "sine", 0.12);
+    playSfx("cashout");
 
     await supabase.from("game_sessions").insert({ user_id: user.id, game_id: "aviator", game_title: "Aviator Crash", bet_amount: betForSession, win_amount: winAmount, result: "win" });
     toast.success(`Cashed out at ${multiplier.toFixed(2)}x — Won ₹${winAmount.toFixed(2)}!`);
     await refreshProfile();
 
-    // Continue animation until crash
     const continueAnim = (time: number) => {
       const elapsed = (time - startTimeRef.current) / 1000;
-      const currentMult = Math.pow(Math.E, elapsed * 0.08);
+      const currentMult = Math.min(Math.exp(elapsed * GROWTH_RATE), 8.0);
       if (currentMult >= crashPointRef.current) {
         setMultiplier(crashPointRef.current);
         drawGraph(crashPointRef.current, true);
@@ -252,7 +247,7 @@ const AviatorPage = () => {
         <div className="flex items-center gap-3">
           <Link to="/games" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></Link>
           <img src={aviatorLogo} alt="Aviator" className="h-10 w-10 rounded-xl object-cover" />
-          <div><h1 className="text-lg font-bold tracking-tight">Aviator Crash</h1><p className="text-[10px] text-muted-foreground">FairClash Tournaments</p></div>
+          <div><h1 className="text-lg font-bold tracking-tight">Aviator Crash</h1><p className="text-[10px] text-muted-foreground">Max 8.0x · FairClash</p></div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setSoundOn(!soundOn)} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground">
@@ -277,7 +272,7 @@ const AviatorPage = () => {
             <li>The multiplier starts at 1.00x and increases gradually</li>
             <li>Hit <strong>CASH OUT</strong> before the plane crashes to win your bet × multiplier</li>
             <li>If you don't cash out before the crash, you lose your bet</li>
-            <li>Most rounds crash between 1.2x–3x. Big multipliers (5x+) are rare!</li>
+            <li>Most rounds crash between 1.2x–2.5x (70%). Max multiplier is 8.0x</li>
           </ul>
         </div>
       )}
@@ -305,10 +300,10 @@ const AviatorPage = () => {
         )}
       </div>
 
-      {/* CASHOUT BUTTON */}
+      {/* CASHOUT BUTTON — prominent with glow */}
       {canCashout && (
         <button onClick={handleCashout}
-          className="w-full h-16 rounded-xl bg-gradient-to-r from-success to-emerald-500 text-white text-xl font-bold shadow-lg shadow-success/40 flex items-center justify-center gap-3 transition-all active:scale-95 animate-pulse">
+          className="w-full h-16 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white text-xl font-bold shadow-[0_0_30px_rgba(16,185,129,0.5)] flex items-center justify-center gap-3 transition-all active:scale-95 animate-pulse border-2 border-emerald-400">
           💰 CASH OUT — ₹{(currentBet * multiplier).toFixed(0)}
         </button>
       )}
