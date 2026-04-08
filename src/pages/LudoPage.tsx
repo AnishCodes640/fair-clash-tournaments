@@ -19,19 +19,7 @@ type Screen = "lobby" | "matchmaking" | "game" | "result";
 
 const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
 
-// Sound effects
-const audioCtx = typeof AudioContext !== "undefined" ? new AudioContext() : null;
-function playSound(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.12) {
-  if (!audioCtx) return;
-  try {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = type; osc.frequency.value = freq; gain.gain.value = vol;
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-    osc.stop(audioCtx.currentTime + dur);
-  } catch {}
-}
+// Sound effects handled by soundManager
 
 // Board rendering helpers — maps piece state to SVG coordinates on a 15x15 grid
 // Based on standard Ludo board layout (reference image: green top-left, yellow top-right, blue bottom-right, red bottom-left)
