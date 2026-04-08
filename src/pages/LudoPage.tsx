@@ -293,14 +293,14 @@ const LudoPage = () => {
     if (gameState.currentTurn !== myPlayerIndex) return;
 
     setRolling(true);
-    playSound(300, 0.15, "square", 0.08);
+    playSfx("diceRoll");
     const dice = rollDice();
 
     await new Promise(r => setTimeout(r, 500));
     setDiceValue(dice);
     setRolling(false);
     setDiceRolled(true);
-    playSound(500 + dice * 50, 0.2, "sine", 0.1);
+    playSfx("diceRoll");
 
     const moves = getValidMoves(gameState, myPlayerIndex, dice);
     if (moves.length === 0) {
@@ -320,12 +320,12 @@ const LudoPage = () => {
     if (!roomId || !diceRolled || diceValue === null) return;
     if (!validMoves.includes(pieceIndex)) return;
 
-    playSound(600, 0.1, "sine", 0.08);
+    playSfx("tokenMove");
     const result = movePiece(gameState, myPlayerIndex, pieceIndex, diceValue);
 
     if (result.killed) {
       toast("Piece captured! 💀", { icon: "⚔️" });
-      playSound(200, 0.3, "sawtooth", 0.1);
+      playSfx("kill");
     }
 
     const newBoardState = JSON.parse(JSON.stringify({
@@ -349,7 +349,7 @@ const LudoPage = () => {
 
     if (result.newState.winner !== null) {
       const winnerPlayer = players[result.newState.winner];
-      playSound(880, 0.5, "sine", 0.15);
+      playSfx("win");
       if (winnerPlayer?.user_id === user?.id) {
         if (entryFee > 0) {
           const prizePool = entryFee * players.length;
