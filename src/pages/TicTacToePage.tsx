@@ -3,9 +3,7 @@ import { ArrowLeft, RotateCcw, Cpu } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-
-type Cell = "X" | "O" | null;
-type Difficulty = "easy" | "normal" | "hard";
+import ticTacToeLogo from "@/assets/tic-tac-toe-logo.jpg";
 
 const WINNING_LINES = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
