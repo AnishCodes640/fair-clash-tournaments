@@ -1,12 +1,14 @@
 import { useState, useCallback } from "react";
-import { ArrowLeft, RotateCcw, Cpu } from "lucide-react";
+import { ArrowLeft, RotateCcw, Cpu, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { playSound } from "@/lib/soundManager";
 import ticTacToeLogo from "@/assets/tic-tac-toe-logo.jpg";
 
 type Cell = "X" | "O" | null;
 type Difficulty = "easy" | "normal" | "hard";
+type GameMode = "ai" | "local";
 
 const WINNING_LINES = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -27,18 +29,8 @@ function checkWinner(board: Cell[]): { winner: Cell; line: number[] | null } {
 function getAIMove(board: Cell[], difficulty: Difficulty): number {
   const empty = board.map((c, i) => c === null ? i : -1).filter(i => i >= 0);
   if (empty.length === 0) return -1;
-
-  if (difficulty === "easy") {
-    // 30% chance of smart move
-    if (Math.random() > 0.3) return empty[Math.floor(Math.random() * empty.length)];
-  }
-
-  if (difficulty === "normal") {
-    // 60% chance of smart move
-    if (Math.random() > 0.6) return empty[Math.floor(Math.random() * empty.length)];
-  }
-
-  // Smart/minimax move
+  if (difficulty === "easy" && Math.random() > 0.3) return empty[Math.floor(Math.random() * empty.length)];
+  if (difficulty === "normal" && Math.random() > 0.6) return empty[Math.floor(Math.random() * empty.length)];
   return bestMove(board);
 }
 
@@ -60,24 +52,13 @@ function minimax(board: Cell[], isMax: boolean, depth: number): number {
   if (winner === "O") return 10 - depth;
   if (winner === "X") return depth - 10;
   if (board.every(c => c !== null)) return 0;
-
   if (isMax) {
     let best = -Infinity;
-    for (let i = 0; i < 9; i++) {
-      if (board[i] !== null) continue;
-      board[i] = "O";
-      best = Math.max(best, minimax(board, false, depth + 1));
-      board[i] = null;
-    }
+    for (let i = 0; i < 9; i++) { if (board[i] !== null) continue; board[i] = "O"; best = Math.max(best, minimax(board, false, depth + 1)); board[i] = null; }
     return best;
   } else {
     let best = Infinity;
-    for (let i = 0; i < 9; i++) {
-      if (board[i] !== null) continue;
-      board[i] = "X";
-      best = Math.min(best, minimax(board, true, depth + 1));
-      board[i] = null;
-    }
+    for (let i = 0; i < 9; i++) { if (board[i] !== null) continue; board[i] = "X"; best = Math.min(best, minimax(board, true, depth + 1)); board[i] = null; }
     return best;
   }
 }
@@ -85,31 +66,41 @@ function minimax(board: Cell[], isMax: boolean, depth: number): number {
 const TicTacToePage = () => {
   const [board, setBoard] = useState<Cell[]>(Array(9).fill(null));
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
+  const [gameMode, setGameMode] = useState<GameMode>("ai");
   const [gameOver, setGameOver] = useState(false);
   const [winLine, setWinLine] = useState<number[] | null>(null);
-  const [scores, setScores] = useState({ player: 0, ai: 0, draw: 0 });
+  const [scores, setScores] = useState({ p1: 0, p2: 0, draw: 0 });
   const [thinking, setThinking] = useState(false);
+  const [currentTurn, setCurrentTurn] = useState<"X" | "O">("X");
 
   const resetBoard = useCallback(() => {
     setBoard(Array(9).fill(null));
     setGameOver(false);
     setWinLine(null);
     setThinking(false);
+    setCurrentTurn("X");
   }, []);
 
   const handleClick = useCallback((idx: number) => {
     if (board[idx] || gameOver || thinking) return;
+    playSound("click");
 
     const newBoard = [...board];
-    newBoard[idx] = "X";
+    newBoard[idx] = currentTurn;
 
     const { winner, line } = checkWinner(newBoard);
     if (winner) {
       setBoard(newBoard);
       setWinLine(line);
       setGameOver(true);
-      setScores(s => ({ ...s, player: s.player + 1 }));
-      toast.success("You win! 🎉");
+      playSound("win");
+      if (winner === "X") {
+        setScores(s => ({ ...s, p1: s.p1 + 1 }));
+        toast.success(gameMode === "local" ? "Player 1 (X) wins!" : "You win! 🎉");
+      } else {
+        setScores(s => ({ ...s, p2: s.p2 + 1 }));
+        toast.success(gameMode === "local" ? "Player 2 (O) wins!" : "AI wins! 🤖");
+      }
       return;
     }
     if (newBoard.every(c => c !== null)) {
@@ -121,8 +112,14 @@ const TicTacToePage = () => {
     }
 
     setBoard(newBoard);
-    setThinking(true);
 
+    if (gameMode === "local") {
+      setCurrentTurn(currentTurn === "X" ? "O" : "X");
+      return;
+    }
+
+    // AI mode
+    setThinking(true);
     setTimeout(() => {
       const aiIdx = getAIMove(newBoard, difficulty);
       if (aiIdx >= 0) {
@@ -132,7 +129,8 @@ const TicTacToePage = () => {
         if (w2) {
           setWinLine(l2);
           setGameOver(true);
-          setScores(s => ({ ...s, ai: s.ai + 1 }));
+          setScores(s => ({ ...s, p2: s.p2 + 1 }));
+          playSound("lose");
           toast.error("AI wins! 🤖");
         } else if (newBoard.every(c => c !== null)) {
           setGameOver(true);
@@ -142,7 +140,10 @@ const TicTacToePage = () => {
       }
       setThinking(false);
     }, 400);
-  }, [board, gameOver, thinking, difficulty]);
+  }, [board, gameOver, thinking, difficulty, gameMode, currentTurn]);
+
+  const p1Label = gameMode === "local" ? "P1 (X)" : "You (X)";
+  const p2Label = gameMode === "local" ? "P2 (O)" : "AI (O)";
 
   return (
     <div className="max-w-md mx-auto px-4 py-6 space-y-6 animate-fade-in">
@@ -157,33 +158,60 @@ const TicTacToePage = () => {
         </div>
       </div>
 
-      {/* Difficulty */}
+      {/* Game Mode */}
       <div className="surface-card rounded-xl p-4 space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Difficulty</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Game Mode</p>
         <div className="flex gap-2">
-          {(["easy", "normal", "hard"] as Difficulty[]).map(d => (
-            <button key={d} onClick={() => { setDifficulty(d); resetBoard(); }}
-              className={cn("flex-1 h-9 rounded-lg text-xs font-medium capitalize transition-all",
-                difficulty === d ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground")}>
-              {d}
-            </button>
-          ))}
+          <button onClick={() => { setGameMode("ai"); resetBoard(); setScores({ p1: 0, p2: 0, draw: 0 }); }}
+            className={cn("flex-1 h-9 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all",
+              gameMode === "ai" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground")}>
+            <Cpu className="h-3.5 w-3.5" /> vs AI
+          </button>
+          <button onClick={() => { setGameMode("local"); resetBoard(); setScores({ p1: 0, p2: 0, draw: 0 }); }}
+            className={cn("flex-1 h-9 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all",
+              gameMode === "local" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground")}>
+            <Users className="h-3.5 w-3.5" /> 2 Players
+          </button>
         </div>
       </div>
+
+      {/* Difficulty (AI only) */}
+      {gameMode === "ai" && (
+        <div className="surface-card rounded-xl p-4 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Difficulty</p>
+          <div className="flex gap-2">
+            {(["easy", "normal", "hard"] as Difficulty[]).map(d => (
+              <button key={d} onClick={() => { setDifficulty(d); resetBoard(); }}
+                className={cn("flex-1 h-9 rounded-lg text-xs font-medium capitalize transition-all",
+                  difficulty === d ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground")}>
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Turn Indicator (local mode) */}
+      {gameMode === "local" && !gameOver && (
+        <div className={cn("text-center py-2 rounded-lg text-sm font-semibold transition-all",
+          currentTurn === "X" ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive")}>
+          {currentTurn === "X" ? "Player 1's Turn (X)" : "Player 2's Turn (O)"}
+        </div>
+      )}
 
       {/* Scoreboard */}
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="surface-card rounded-lg p-3">
-          <p className="text-lg font-bold text-primary font-mono-num">{scores.player}</p>
-          <p className="text-[10px] text-muted-foreground">You (X)</p>
+          <p className="text-lg font-bold text-primary font-mono-num">{scores.p1}</p>
+          <p className="text-[10px] text-muted-foreground">{p1Label}</p>
         </div>
         <div className="surface-card rounded-lg p-3">
           <p className="text-lg font-bold text-muted-foreground font-mono-num">{scores.draw}</p>
           <p className="text-[10px] text-muted-foreground">Draw</p>
         </div>
         <div className="surface-card rounded-lg p-3">
-          <p className="text-lg font-bold text-destructive font-mono-num">{scores.ai}</p>
-          <p className="text-[10px] text-muted-foreground">AI (O)</p>
+          <p className="text-lg font-bold text-destructive font-mono-num">{scores.p2}</p>
+          <p className="text-[10px] text-muted-foreground">{p2Label}</p>
         </div>
       </div>
 

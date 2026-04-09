@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, RotateCcw, Clock } from "lucide-react";
+import { ArrowLeft, RotateCcw, Clock, Users, Cpu } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { playSound } from "@/lib/soundManager";
 import memoryLogo from "@/assets/memory-logo.jpg";
 
 type Difficulty = "easy" | "normal" | "hard";
+type GameMode = "solo" | "local";
 const GRID_MAP: Record<Difficulty, number> = { easy: 8, normal: 12, hard: 16 };
 
-// Colorful SVG icon shapes with bright card background colors
 const CARD_ICONS: { shape: string; color: string; bg: string }[] = [
   { shape: "star", color: "#f59e0b", bg: "#fef3c7" },
   { shape: "heart", color: "#ef4444", bg: "#fee2e2" },
@@ -26,39 +27,26 @@ const CARD_ICONS: { shape: string; color: string; bg: string }[] = [
 
 function CardIcon({ shape, color, size = 32 }: { shape: string; color: string; size?: number }) {
   const s = size;
-  const h = s / 2;
   switch (shape) {
-    case "star":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>;
-    case "heart":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>;
-    case "diamond":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 2L2 12l10 10 10-10L12 2z"/></svg>;
-    case "circle":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><circle cx="12" cy="12" r="10"/></svg>;
-    case "triangle":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 2L2 22h20L12 2z"/></svg>;
-    case "hex":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/></svg>;
-    case "cross":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7V2z"/></svg>;
-    case "moon":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
-    case "bolt":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>;
-    case "crown":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M2 20h20l-2-8-4 4-4-8-4 8-4-4-2 8zm2-10l2 2 4-6 4 6 2-2 2 4V6H4v4z"/></svg>;
-    case "drop":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 2C8 8 4 12.5 4 16a8 8 0 1 0 16 0c0-3.5-4-8-8-14z"/></svg>;
-    case "flame":
-      return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 23c-4.97 0-9-3.58-9-8 0-3.19 2.13-6.12 4-8 .74-.74 2-.18 2 .88v.38c0 1.42.82 2.72 2.12 3.32.37.17.8-.04.8-.45 0-2.1.86-4.1 2.38-5.56C15.54 4.37 17 2 17 2s4 4.58 4 13c0 4.42-4.03 8-9 8z"/></svg>;
-    default:
-      return <div className="w-8 h-8 rounded-full" style={{ background: color }} />;
+    case "star": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>;
+    case "heart": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>;
+    case "diamond": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 2L2 12l10 10 10-10L12 2z"/></svg>;
+    case "circle": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><circle cx="12" cy="12" r="10"/></svg>;
+    case "triangle": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 2L2 22h20L12 2z"/></svg>;
+    case "hex": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/></svg>;
+    case "cross": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7V2z"/></svg>;
+    case "moon": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
+    case "bolt": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>;
+    case "crown": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M2 20h20l-2-8-4 4-4-8-4 8-4-4-2 8zm2-10l2 2 4-6 4 6 2-2 2 4V6H4v4z"/></svg>;
+    case "drop": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 2C8 8 4 12.5 4 16a8 8 0 1 0 16 0c0-3.5-4-8-8-14z"/></svg>;
+    case "flame": return <svg width={s} height={s} viewBox="0 0 24 24" fill={color}><path d="M12 23c-4.97 0-9-3.58-9-8 0-3.19 2.13-6.12 4-8 .74-.74 2-.18 2 .88v.38c0 1.42.82 2.72 2.12 3.32.37.17.8-.04.8-.45 0-2.1.86-4.1 2.38-5.56C15.54 4.37 17 2 17 2s4 4.58 4 13c0 4.42-4.03 8-9 8z"/></svg>;
+    default: return <div className="w-8 h-8 rounded-full" style={{ background: color }} />;
   }
 }
 
 const MemoryPage = () => {
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
+  const [gameMode, setGameMode] = useState<GameMode>("solo");
   const [cards, setCards] = useState<{ id: number; iconIdx: number; flipped: boolean; matched: boolean }[]>([]);
   const [flipped, setFlipped] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
@@ -66,6 +54,9 @@ const MemoryPage = () => {
   const [timer, setTimer] = useState(0);
   const [started, setStarted] = useState(false);
   const [bestTime, setBestTime] = useState(() => Number(localStorage.getItem(`memory_bt_12`) || 0));
+  // Local multiplayer state
+  const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(1);
+  const [playerScores, setPlayerScores] = useState({ p1: 0, p2: 0 });
 
   const initGame = useCallback((diff: Difficulty) => {
     const count = GRID_MAP[diff];
@@ -76,6 +67,8 @@ const MemoryPage = () => {
       .map((iconIdx, id) => ({ id, iconIdx, flipped: false, matched: false }));
     setCards(deck); setFlipped([]); setMoves(0); setMatched(0); setTimer(0); setStarted(true);
     setBestTime(Number(localStorage.getItem(`memory_bt_${count}`) || 0));
+    setCurrentPlayer(1);
+    setPlayerScores({ p1: 0, p2: 0 });
   }, []);
 
   useEffect(() => { initGame(difficulty); }, [difficulty, initGame]);
@@ -90,14 +83,21 @@ const MemoryPage = () => {
     if (matched > 0 && matched === cards.length / 2) {
       const key = `memory_bt_${cards.length}`;
       const prev = Number(localStorage.getItem(key) || 0);
-      if (!prev || timer < prev) { localStorage.setItem(key, String(timer)); setBestTime(timer); }
-      toast.success(`Completed in ${moves} moves, ${timer}s! 🎉`);
+      if (gameMode === "solo" && (!prev || timer < prev)) { localStorage.setItem(key, String(timer)); setBestTime(timer); }
+      if (gameMode === "local") {
+        const winner = playerScores.p1 > playerScores.p2 ? "Player 1" : playerScores.p2 > playerScores.p1 ? "Player 2" : "Tie";
+        toast.success(winner === "Tie" ? "It's a tie!" : `${winner} wins!`);
+      } else {
+        toast.success(`Completed in ${moves} moves, ${timer}s! 🎉`);
+      }
+      playSound("win");
     }
-  }, [matched, cards.length, moves, timer]);
+  }, [matched, cards.length, moves, timer, gameMode, playerScores]);
 
   const handleFlip = (id: number) => {
     if (flipped.length === 2) return;
     if (cards[id].matched || cards[id].flipped) return;
+    playSound("flip");
     const newCards = [...cards];
     newCards[id] = { ...newCards[id], flipped: true };
     setCards(newCards);
@@ -107,14 +107,15 @@ const MemoryPage = () => {
       setMoves(m => m + 1);
       const [a, b] = newFlipped;
       if (newCards[a].iconIdx === newCards[b].iconIdx) {
-        const matched1 = { ...newCards[a], matched: true };
-        const matched2 = { ...newCards[b], matched: true };
         const updatedCards = [...newCards];
-        updatedCards[a] = matched1;
-        updatedCards[b] = matched2;
+        updatedCards[a] = { ...updatedCards[a], matched: true };
+        updatedCards[b] = { ...updatedCards[b], matched: true };
         setCards(updatedCards);
         setMatched(m => m + 1);
         setFlipped([]);
+        if (gameMode === "local") {
+          setPlayerScores(s => currentPlayer === 1 ? { ...s, p1: s.p1 + 1 } : { ...s, p2: s.p2 + 1 });
+        }
       } else {
         setTimeout(() => {
           const reset = [...newCards];
@@ -122,12 +123,15 @@ const MemoryPage = () => {
           reset[b] = { ...reset[b], flipped: false };
           setCards(reset);
           setFlipped([]);
+          if (gameMode === "local") {
+            setCurrentPlayer(p => p === 1 ? 2 : 1);
+          }
         }, 600);
       }
     }
   };
 
-  const cols = difficulty === "easy" ? 4 : difficulty === "normal" ? 4 : 4;
+  const cols = 4;
   const done = matched === cards.length / 2 && cards.length > 0;
 
   return (
@@ -136,6 +140,20 @@ const MemoryPage = () => {
         <Link to="/games" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></Link>
         <img src={memoryLogo} alt="Memory Match" className="h-10 w-10 rounded-xl object-cover" />
         <div><h1 className="text-xl font-bold tracking-tight">Memory Match</h1><p className="text-[10px] text-muted-foreground">Practice Mode · Free</p></div>
+      </div>
+
+      {/* Game Mode */}
+      <div className="flex gap-2">
+        <button onClick={() => { setGameMode("solo"); initGame(difficulty); }}
+          className={cn("flex-1 h-8 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all",
+            gameMode === "solo" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>
+          <Cpu className="h-3.5 w-3.5" /> Solo
+        </button>
+        <button onClick={() => { setGameMode("local"); initGame(difficulty); }}
+          className={cn("flex-1 h-8 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all",
+            gameMode === "local" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>
+          <Users className="h-3.5 w-3.5" /> 2 Players
+        </button>
       </div>
 
       <div className="flex gap-2">
@@ -148,10 +166,18 @@ const MemoryPage = () => {
         ))}
       </div>
 
+      {/* Turn indicator (local) */}
+      {gameMode === "local" && !done && (
+        <div className={cn("text-center py-2 rounded-lg text-sm font-semibold transition-all",
+          currentPlayer === 1 ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive")}>
+          Player {currentPlayer}'s Turn — P1: {playerScores.p1} · P2: {playerScores.p2}
+        </div>
+      )}
+
       <div className="flex justify-between text-xs">
         <span>Moves: <strong className="font-mono-num">{moves}</strong></span>
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> <strong className="font-mono-num">{timer}s</strong></span>
-        {bestTime > 0 && <span>Best: <strong className="font-mono-num text-warning">{bestTime}s</strong></span>}
+        {gameMode === "solo" && bestTime > 0 && <span>Best: <strong className="font-mono-num text-warning">{bestTime}s</strong></span>}
       </div>
 
       <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
@@ -179,7 +205,7 @@ const MemoryPage = () => {
                     <span className="text-primary/40 text-lg font-bold">?</span>
                   </div>
                 </div>
-                {/* Card Front — outer color + inner white + centered icon */}
+                {/* Card Front */}
                 <div
                   className={cn(
                     "absolute inset-0 rounded-2xl [backface-visibility:hidden] [transform:rotateY(180deg)] p-2 transition-opacity",
