@@ -385,6 +385,21 @@ const LudoPage = () => {
   const isMyTurn = gameState.currentTurn === myPlayerIndex;
   const maxPlayers = mode === "2p" ? 2 : 4;
 
+  // MATCHMAKING timeout effect — must be before any early returns
+  useEffect(() => {
+    if (screen !== "matchmaking") { setMatchTimer(0); return; }
+    const interval = setInterval(() => {
+      setMatchTimer(prev => {
+        if (prev + 1 >= MATCH_TIMEOUT) {
+          clearInterval(interval);
+          return MATCH_TIMEOUT;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [screen]);
+
   if (!user) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 text-center animate-fade-in">
@@ -446,21 +461,6 @@ const LudoPage = () => {
       </div>
     );
   }
-
-  // MATCHMAKING timeout effect
-  useEffect(() => {
-    if (screen !== "matchmaking") { setMatchTimer(0); return; }
-    const interval = setInterval(() => {
-      setMatchTimer(prev => {
-        if (prev + 1 >= MATCH_TIMEOUT) {
-          clearInterval(interval);
-          return MATCH_TIMEOUT;
-        }
-        return prev + 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [screen]);
 
   if (screen === "matchmaking") {
     const timedOut = matchTimer >= MATCH_TIMEOUT;
