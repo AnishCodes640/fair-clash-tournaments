@@ -127,10 +127,10 @@ const LeaderboardPage = () => {
   };
 
   const getRankStyle = (rank: number, isAdmin: boolean) => {
-    if (isAdmin) return "bg-red-500/8 border-l-2 border-l-red-500/40";
-    if (rank === 0) return "bg-yellow-500/8 border-l-2 border-l-yellow-500/40";
-    if (rank === 1) return "bg-gray-400/8 border-l-2 border-l-gray-400/40";
-    if (rank === 2) return "bg-orange-400/8 border-l-2 border-l-orange-400/40";
+    if (isAdmin) return "bg-red-500/8 border-l-2 border-l-red-500/40 animate-rank-admin";
+    if (rank === 0) return "bg-yellow-500/8 border-l-2 border-l-yellow-500/40 animate-rank-gold animate-rank-shine";
+    if (rank === 1) return "bg-gray-400/8 border-l-2 border-l-gray-400/40 animate-rank-silver";
+    if (rank === 2) return "bg-orange-400/8 border-l-2 border-l-orange-400/40 animate-rank-bronze";
     return "";
   };
 
