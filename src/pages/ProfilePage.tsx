@@ -1,6 +1,6 @@
-import { User, Mail, Calendar, LogIn, LogOut, Shield, Wallet, Camera, Save, Edit2, Gamepad2, Trophy, Target, TrendingUp } from "lucide-react";
+import { User, Mail, Calendar, LogIn, LogOut, Shield, Wallet, Camera, Save, Edit2, Gamepad2, Trophy, Target, TrendingUp, Settings, Palette } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -206,6 +206,11 @@ const ProfilePage = () => {
           </div>
         </div>
       )}
+
+      <Link to="/settings"
+        className="w-full h-10 rounded-lg border border-border text-foreground text-sm font-medium flex items-center justify-center gap-2 hover:bg-accent transition-colors mb-2">
+        <Palette className="h-4 w-4" /> Themes & Settings
+      </Link>
 
       <button onClick={async () => { await signOut(); navigate("/"); }}
         className="w-full h-10 rounded-lg border border-destructive/30 text-destructive text-sm font-medium flex items-center justify-center gap-2 hover:bg-destructive/10 transition-colors">

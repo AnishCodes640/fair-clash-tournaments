@@ -26,6 +26,7 @@ import MemoryPage from "./pages/MemoryPage";
 import SudokuPage from "./pages/SudokuPage";
 import DoodleJumpPage from "./pages/DoodleJumpPage";
 import NotFound from "./pages/NotFound";
+import SettingsPage from "./pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
                 <Route path="/memory" element={<MemoryPage />} />
                 <Route path="/sudoku" element={<SudokuPage />} />
                 <Route path="/doodle-jump" element={<DoodleJumpPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<NotFound />} />

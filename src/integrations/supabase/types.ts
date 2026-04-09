@@ -282,6 +282,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_theme: string
           avatar_url: string | null
           bio: string | null
           created_at: string
@@ -297,6 +298,7 @@ export type Database = {
           wallet_balance: number
         }
         Insert: {
+          active_theme?: string
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -312,6 +314,7 @@ export type Database = {
           wallet_balance?: number
         }
         Update: {
+          active_theme?: string
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -424,6 +427,27 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_themes: {
+        Row: {
+          id: string
+          purchased_at: string
+          theme_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          purchased_at?: string
+          theme_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          purchased_at?: string
+          theme_id?: string
           user_id?: string
         }
         Relationships: []
@@ -553,6 +577,10 @@ export type Database = {
       }
       place_bet: {
         Args: { p_amount: number; p_game_id: string; p_game_title: string }
+        Returns: Json
+      }
+      purchase_theme: {
+        Args: { p_price: number; p_theme_id: string }
         Returns: Json
       }
       record_loss: { Args: { p_session_id: string }; Returns: Json }

@@ -1,4 +1,4 @@
-import { Trophy, Gamepad2, ArrowRight, Bell, Plane, Wallet, Crown, Clock, Star, TrendingUp, Dice5, Grid3X3, Bug, Brain, Hash } from "lucide-react";
+import { Trophy, Gamepad2, ArrowRight, Bell, Plane, Wallet, Crown, Clock, Star, TrendingUp, Dice5, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,12 +7,25 @@ import { useEffect, useState } from "react";
 import fairclashLogo from "@/assets/fairclash-logo.jpg";
 import aviatorLogo from "@/assets/aviator-logo.jpg";
 import ludoClashLogo from "@/assets/ludo-clash-logo.jpg";
+import ticTacToeLogo from "@/assets/tic-tac-toe-logo.jpg";
+import snakeLogo from "@/assets/snake-logo.jpg";
+import memoryLogo from "@/assets/memory-logo.jpg";
+import sudokuLogo from "@/assets/sudoku-logo.png";
+import doodleJumpLogo from "@/assets/doodle-jump-logo.jpg";
 import { cn } from "@/lib/utils";
+
+const BUILT_IN_GAMES = [
+  { to: "/tic-tac-toe", logo: ticTacToeLogo, name: "Tic Tac Toe", desc: "AI or 2P · Free" },
+  { to: "/snake", logo: snakeLogo, name: "Snake", desc: "Classic · Free" },
+  { to: "/memory", logo: memoryLogo, name: "Memory Match", desc: "Solo or 2P · Free" },
+  { to: "/sudoku", logo: sudokuLogo, name: "Sudoku", desc: "Puzzle · Free" },
+  { to: "/doodle-jump", logo: doodleJumpLogo, name: "Doodle Jump", desc: "Platformer · Free" },
+];
 
 const HomePage = () => {
   const { user, profile } = useAuth();
   const [notices, setNotices] = useState<any[]>([]);
-  const [stats, setStats] = useState({ tournaments: 0, games: 0, activePlayers: 0 });
+  const [stats, setStats] = useState({ tournaments: 0, games: 0 });
   const [recentGames, setRecentGames] = useState<any[]>([]);
   const [mostPlayed, setMostPlayed] = useState<{ game_title: string; count: number }[]>([]);
   const [uploadedGames, setUploadedGames] = useState<any[]>([]);
@@ -26,15 +39,10 @@ const HomePage = () => {
         supabase.from("game_sessions").select("game_title").limit(500),
       ]);
 
-      const activeNotices = (noticesRes.data || []).filter((n: any) => !n.expiry_at || new Date(n.expiry_at) > new Date());
-      setNotices(activeNotices);
+      setNotices((noticesRes.data || []).filter((n: any) => !n.expiry_at || new Date(n.expiry_at) > new Date()));
       const uploadedList = gamesRes.data || [];
       setUploadedGames(uploadedList);
-      setStats({
-        games: uploadedList.length + 7, // +7 built-in games
-        tournaments: tournamentsRes.data?.length || 0,
-        activePlayers: 0,
-      });
+      setStats({ games: uploadedList.length + 7, tournaments: tournamentsRes.data?.length || 0 });
 
       const counts: Record<string, number> = {};
       (sessionsRes.data || []).forEach((s: any) => { counts[s.game_title] = (counts[s.game_title] || 0) + 1; });
@@ -98,29 +106,39 @@ const HomePage = () => {
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
           </Link>
           <Link to="/tic-tac-toe" className="surface-card rounded-xl p-4 flex items-center gap-3 group hover:border-primary/30 transition-all hover-scale">
-            <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center">
-              <Grid3X3 className="h-6 w-6 text-primary" />
-            </div>
+            <img src={ticTacToeLogo} alt="Tic Tac Toe" className="h-12 w-12 rounded-xl object-cover" />
             <div className="flex-1">
               <p className="text-sm font-bold">Tic Tac Toe</p>
-              <p className="text-[10px] text-muted-foreground">Practice · Free</p>
+              <p className="text-[10px] text-muted-foreground">AI or 2 Players · Free</p>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
           </Link>
         </div>
-        {/* Practice games row */}
+        {/* Practice games row with logos */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {[
-            { to: "/snake", icon: Bug, name: "Snake" },
-            { to: "/memory", icon: Brain, name: "Memory" },
-            { to: "/sudoku", icon: Hash, name: "Sudoku" },
-          ].map(g => (
-            <Link key={g.to} to={g.to} className="surface-card rounded-lg px-4 py-3 flex items-center gap-2 min-w-[130px] flex-shrink-0 hover:border-primary/30 transition-all">
-              <g.icon className="h-4 w-4 text-primary" />
-              <span className="text-xs font-medium">{g.name}</span>
-              <span className="ml-auto text-[10px] text-muted-foreground">Free</span>
+          {BUILT_IN_GAMES.filter(g => !["/tic-tac-toe"].includes(g.to)).map(g => (
+            <Link key={g.to} to={g.to} className="surface-card rounded-lg px-3 py-2.5 flex items-center gap-2.5 min-w-[150px] flex-shrink-0 hover:border-primary/30 transition-all">
+              <img src={g.logo} alt={g.name} className="h-8 w-8 rounded-lg object-cover" />
+              <div>
+                <span className="text-xs font-medium block">{g.name}</span>
+                <span className="text-[10px] text-muted-foreground">{g.desc}</span>
+              </div>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* Play With Friends — Coming Soon */}
+      <section className="surface-card rounded-xl p-4 flex items-center gap-3 opacity-70">
+        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Users className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium flex items-center gap-2">
+            Play with Friends
+            <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px] font-medium">Coming Soon</span>
+          </p>
+          <p className="text-[10px] text-muted-foreground">Invite friends and compete together</p>
         </div>
       </section>
 
@@ -128,7 +146,7 @@ const HomePage = () => {
       {uploadedGames.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5" /> Recently Added
+            <Star className="h-3.5 w-3.5" /> New Games
           </h2>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {uploadedGames.slice(0, 6).map((g: any) => (
@@ -145,7 +163,7 @@ const HomePage = () => {
       {mostPlayed.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-            <Star className="h-3.5 w-3.5" /> Most Played
+            <TrendingUp className="h-3.5 w-3.5" /> Most Played
           </h2>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {mostPlayed.map((g) => (
@@ -169,7 +187,9 @@ const HomePage = () => {
               <div key={g.id} className="surface-card rounded-lg p-3 min-w-[140px] flex-shrink-0">
                 <p className="text-xs font-medium truncate">{g.game_title}</p>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  {g.win_amount > 0 ? <span className="text-success">Won ₹{Number(g.win_amount).toFixed(0)}</span> : <span>Bet ₹{Number(g.bet_amount).toFixed(0)}</span>}
+                  {g.result === "win" ? <span className="text-success">Won ₹{Number(g.win_amount).toFixed(0)}</span> :
+                   g.result === "loss" ? <span className="text-destructive">Lost</span> :
+                   <span>Bet ₹{Number(g.bet_amount).toFixed(0)}</span>}
                 </p>
               </div>
             ))}
