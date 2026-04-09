@@ -120,6 +120,8 @@ const LudoPage = () => {
   const [rolling, setRolling] = useState(false);
   const [balance, setBalance] = useState(0);
   const [winner, setWinner] = useState<string | null>(null);
+  const [matchTimer, setMatchTimer] = useState(0);
+  const MATCH_TIMEOUT = 60;
   const channelRef = useRef<any>(null);
 
   useEffect(() => {
