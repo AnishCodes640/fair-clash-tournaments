@@ -555,6 +555,7 @@ export type Database = {
         Args: { p_amount: number; p_game_id: string; p_game_title: string }
         Returns: Json
       }
+      record_loss: { Args: { p_session_id: string }; Returns: Json }
       refund_bet: {
         Args: { p_amount: number; p_reason: string }
         Returns: Json

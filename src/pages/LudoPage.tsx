@@ -120,6 +120,8 @@ const LudoPage = () => {
   const [rolling, setRolling] = useState(false);
   const [balance, setBalance] = useState(0);
   const [winner, setWinner] = useState<string | null>(null);
+  const [matchTimer, setMatchTimer] = useState(0);
+  const MATCH_TIMEOUT = 60;
   const channelRef = useRef<any>(null);
 
   useEffect(() => {
@@ -383,6 +385,21 @@ const LudoPage = () => {
   const isMyTurn = gameState.currentTurn === myPlayerIndex;
   const maxPlayers = mode === "2p" ? 2 : 4;
 
+  // MATCHMAKING timeout effect — must be before any early returns
+  useEffect(() => {
+    if (screen !== "matchmaking") { setMatchTimer(0); return; }
+    const interval = setInterval(() => {
+      setMatchTimer(prev => {
+        if (prev + 1 >= MATCH_TIMEOUT) {
+          clearInterval(interval);
+          return MATCH_TIMEOUT;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [screen]);
+
   if (!user) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 text-center animate-fade-in">
@@ -445,27 +462,39 @@ const LudoPage = () => {
     );
   }
 
-  // MATCHMAKING
   if (screen === "matchmaking") {
+    const timedOut = matchTimer >= MATCH_TIMEOUT;
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center space-y-6 animate-fade-in">
         <img src={ludoClashLogo} alt="Ludo Clash" className="h-16 w-16 rounded-2xl object-cover mx-auto" />
-        <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
-        <h2 className="text-lg font-bold">Finding Players...</h2>
-        <p className="text-sm text-muted-foreground">{players.length}/{maxPlayers} joined</p>
-        <div className="flex justify-center gap-4">
-          {Array.from({ length: maxPlayers }).map((_, i) => {
-            const player = players.find((p: any) => p.player_index === i);
-            return (
-              <div key={i} className={cn("w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all",
-                player ? "border-primary bg-primary/10" : "border-dashed border-border")}>
-                {player ? <span className="text-xs font-bold text-center truncate px-1">{player.username?.slice(0, 6)}</span>
-                  : <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />}
-              </div>
-            );
-          })}
-        </div>
-        <button onClick={leaveRoom} className="text-xs text-destructive hover:text-foreground underline">Cancel & Leave</button>
+        {timedOut ? (
+          <>
+            <Users className="h-10 w-10 text-muted-foreground mx-auto" />
+            <h2 className="text-lg font-bold">No Players Found</h2>
+            <p className="text-sm text-muted-foreground">Players are not available right now. Please try again later.</p>
+            <button onClick={leaveRoom} className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Back to Lobby</button>
+          </>
+        ) : (
+          <>
+            <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
+            <h2 className="text-lg font-bold">Finding Players...</h2>
+            <p className="text-sm text-muted-foreground">{players.length}/{maxPlayers} joined</p>
+            <p className="text-xs text-muted-foreground">Estimated wait: ~{MATCH_TIMEOUT - matchTimer}s</p>
+            <div className="flex justify-center gap-4">
+              {Array.from({ length: maxPlayers }).map((_, i) => {
+                const player = players.find((p: any) => p.player_index === i);
+                return (
+                  <div key={i} className={cn("w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all",
+                    player ? "border-primary bg-primary/10" : "border-dashed border-border")}>
+                    {player ? <span className="text-xs font-bold text-center truncate px-1">{player.username?.slice(0, 6)}</span>
+                      : <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />}
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={leaveRoom} className="text-xs text-destructive hover:text-foreground underline">Cancel & Leave</button>
+          </>
+        )}
       </div>
     );
   }

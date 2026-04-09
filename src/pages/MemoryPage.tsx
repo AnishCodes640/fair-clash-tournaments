@@ -8,20 +8,20 @@ import memoryLogo from "@/assets/memory-logo.jpg";
 type Difficulty = "easy" | "normal" | "hard";
 const GRID_MAP: Record<Difficulty, number> = { easy: 8, normal: 12, hard: 16 };
 
-// Colorful SVG icon shapes instead of emojis
-const CARD_ICONS: { shape: string; color: string }[] = [
-  { shape: "star", color: "#f59e0b" },
-  { shape: "heart", color: "#ef4444" },
-  { shape: "diamond", color: "#3b82f6" },
-  { shape: "circle", color: "#22c55e" },
-  { shape: "triangle", color: "#a855f7" },
-  { shape: "hex", color: "#ec4899" },
-  { shape: "cross", color: "#f97316" },
-  { shape: "moon", color: "#6366f1" },
-  { shape: "bolt", color: "#eab308" },
-  { shape: "crown", color: "#d97706" },
-  { shape: "drop", color: "#0ea5e9" },
-  { shape: "flame", color: "#dc2626" },
+// Colorful SVG icon shapes with bright card background colors
+const CARD_ICONS: { shape: string; color: string; bg: string }[] = [
+  { shape: "star", color: "#f59e0b", bg: "#fef3c7" },
+  { shape: "heart", color: "#ef4444", bg: "#fee2e2" },
+  { shape: "diamond", color: "#3b82f6", bg: "#dbeafe" },
+  { shape: "circle", color: "#22c55e", bg: "#dcfce7" },
+  { shape: "triangle", color: "#a855f7", bg: "#f3e8ff" },
+  { shape: "hex", color: "#ec4899", bg: "#fce7f3" },
+  { shape: "cross", color: "#f97316", bg: "#ffedd5" },
+  { shape: "moon", color: "#6366f1", bg: "#e0e7ff" },
+  { shape: "bolt", color: "#eab308", bg: "#fef9c3" },
+  { shape: "crown", color: "#d97706", bg: "#fef3c7" },
+  { shape: "drop", color: "#0ea5e9", bg: "#e0f2fe" },
+  { shape: "flame", color: "#dc2626", bg: "#fecaca" },
 ];
 
 function CardIcon({ shape, color, size = 32 }: { shape: string; color: string; size?: number }) {
@@ -154,9 +154,10 @@ const MemoryPage = () => {
         {bestTime > 0 && <span>Best: <strong className="font-mono-num text-warning">{bestTime}s</strong></span>}
       </div>
 
-      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+      <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
         {cards.map((card) => {
           const isRevealed = card.flipped || card.matched;
+          const iconData = CARD_ICONS[card.iconIdx];
           return (
             <button
               key={card.id}
@@ -170,18 +171,25 @@ const MemoryPage = () => {
               )}>
                 {/* Card Back */}
                 <div className={cn(
-                  "absolute inset-0 rounded-xl [backface-visibility:hidden] flex items-center justify-center border-2",
-                  "bg-gradient-to-br from-primary/20 via-accent/30 to-primary/10 border-primary/20",
-                  "hover:border-primary/40 hover:shadow-md active:scale-95 transition-all"
+                  "absolute inset-0 rounded-2xl [backface-visibility:hidden] flex items-center justify-center",
+                  "bg-gradient-to-br from-primary/30 via-accent/40 to-primary/20 border-2 border-primary/20",
+                  "hover:border-primary/40 hover:shadow-lg active:scale-95 transition-all"
                 )}>
-                  <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold">?</div>
+                  <div className="bg-card rounded-xl m-1.5 w-[calc(100%-12px)] h-[calc(100%-12px)] flex items-center justify-center">
+                    <span className="text-primary/40 text-lg font-bold">?</span>
+                  </div>
                 </div>
-                {/* Card Front */}
-                <div className={cn(
-                  "absolute inset-0 rounded-xl [backface-visibility:hidden] [transform:rotateY(180deg)] flex items-center justify-center border-2",
-                  card.matched ? "bg-success/10 border-success/30 opacity-60" : "bg-card border-primary/30"
-                )}>
-                  <CardIcon {...CARD_ICONS[card.iconIdx]} size={difficulty === "hard" ? 24 : 32} />
+                {/* Card Front — outer color + inner white + centered icon */}
+                <div
+                  className={cn(
+                    "absolute inset-0 rounded-2xl [backface-visibility:hidden] [transform:rotateY(180deg)] p-2 transition-opacity",
+                    card.matched && "opacity-60"
+                  )}
+                  style={{ backgroundColor: iconData.bg }}
+                >
+                  <div className="w-full h-full rounded-xl bg-white flex items-center justify-center shadow-sm">
+                    <CardIcon {...iconData} size={difficulty === "hard" ? 22 : 30} />
+                  </div>
                 </div>
               </div>
             </button>

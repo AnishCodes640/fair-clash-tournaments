@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { placeBet, addWinnings, getWalletBalance } from "@/lib/walletApi";
+import { placeBet, addWinnings, getWalletBalance, recordLoss } from "@/lib/walletApi";
 import { Plane, TrendingUp, History, Wallet, AlertCircle, Users, DollarSign, Timer, BookOpen, ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ const AviatorPage = () => {
   const [crashPoint, setCrashPoint] = useState(0);
   const [betAmount, setBetAmount] = useState("");
   const [currentBet, setCurrentBet] = useState(0);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [history, setHistory] = useState<RoundHistory[]>([]);
   const [balance, setBalance] = useState(0);
   const [countdown, setCountdown] = useState(7);
@@ -155,15 +156,16 @@ const AviatorPage = () => {
 
   useEffect(() => { return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); }; }, []);
 
-  // Handle crash result — record loss
+  // Handle crash result — record loss via RPC
   useEffect(() => {
     if (phase === "crashed") {
       if (currentBet > 0) {
         setHistory((prev) => [{ multiplier: crashPoint, crashed: true, bet: currentBet, won: 0 }, ...prev.slice(0, 19)]);
-        if (user) {
-          supabase.from("game_sessions").insert({ user_id: user.id, game_id: "aviator", game_title: "Aviator Crash", bet_amount: currentBet, win_amount: 0, result: "loss" });
+        if (currentSessionId) {
+          recordLoss(currentSessionId);
         }
         setCurrentBet(0);
+        setCurrentSessionId(null);
         playSfx("lose");
         toast.error(`Crashed at ${crashPoint.toFixed(2)}x — Bet lost!`);
       } else {
@@ -172,7 +174,7 @@ const AviatorPage = () => {
       const timeout = setTimeout(() => { setPhase("waiting"); }, 3500);
       return () => clearTimeout(timeout);
     }
-  }, [phase, crashPoint, currentBet, user]);
+  }, [phase, crashPoint, currentBet, currentSessionId]);
 
   const handlePlaceBet = async () => {
     if (!user) { navigate("/auth"); return; }
@@ -184,6 +186,7 @@ const AviatorPage = () => {
     const result = await placeBet(user.id, amount, "Aviator Crash");
     if (!result.success) { toast.error(result.error || "Bet failed"); return; }
     setCurrentBet(amount);
+    setCurrentSessionId(result.sessionId || null);
     setBalance(result.newBalance || 0);
     await refreshProfile();
     playSfx("bet");
@@ -193,17 +196,16 @@ const AviatorPage = () => {
   const handleCashout = async () => {
     if (!user || currentBet <= 0 || phaseRef.current !== "flying") return;
     const winAmount = Math.round(currentBet * multiplier * 100) / 100;
-    const result = await addWinnings(user.id, winAmount, "Aviator Crash");
+    const result = await addWinnings(user.id, winAmount, "Aviator Crash", currentSessionId || undefined);
     if (!result.success) { toast.error("Cashout failed"); return; }
 
     setBalance(result.newBalance || 0);
     setHistory((prev) => [{ multiplier, crashed: false, bet: currentBet, won: winAmount }, ...prev.slice(0, 19)]);
     setPhase("cashed_out");
-    const betForSession = currentBet;
     setCurrentBet(0);
+    setCurrentSessionId(null);
     playSfx("cashout");
 
-    await supabase.from("game_sessions").insert({ user_id: user.id, game_id: "aviator", game_title: "Aviator Crash", bet_amount: betForSession, win_amount: winAmount, result: "win" });
     toast.success(`Cashed out at ${multiplier.toFixed(2)}x — Won ₹${winAmount.toFixed(2)}!`);
     await refreshProfile();
 

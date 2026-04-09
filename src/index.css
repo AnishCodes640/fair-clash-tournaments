@@ -175,6 +175,31 @@
   75% { transform: translateX(4px); }
 }
 
+@keyframes rank-shine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes rank-glow-gold {
+  0%, 100% { box-shadow: 0 0 8px hsl(45 93% 47% / 0.3); }
+  50% { box-shadow: 0 0 20px hsl(45 93% 47% / 0.6); }
+}
+
+@keyframes rank-glow-silver {
+  0%, 100% { box-shadow: 0 0 6px hsl(0 0% 70% / 0.2); }
+  50% { box-shadow: 0 0 16px hsl(0 0% 70% / 0.5); }
+}
+
+@keyframes rank-glow-bronze {
+  0%, 100% { box-shadow: 0 0 6px hsl(0 60% 50% / 0.2); }
+  50% { box-shadow: 0 0 16px hsl(0 60% 50% / 0.4); }
+}
+
+@keyframes rank-glow-admin {
+  0%, 100% { box-shadow: 0 0 8px hsl(0 72% 51% / 0.3); }
+  50% { box-shadow: 0 0 24px hsl(0 72% 51% / 0.6); }
+}
+
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
@@ -185,4 +210,26 @@
 
 .animate-crash-shake {
   animation: crash-shake 0.1s ease-in-out 5;
+}
+
+.animate-rank-shine {
+  background: linear-gradient(90deg, transparent 0%, hsl(45 93% 60% / 0.3) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: rank-shine 3s ease-in-out infinite;
+}
+
+.animate-rank-gold {
+  animation: rank-glow-gold 2s ease-in-out infinite;
+}
+
+.animate-rank-silver {
+  animation: rank-glow-silver 2.5s ease-in-out infinite;
+}
+
+.animate-rank-bronze {
+  animation: rank-glow-bronze 2.5s ease-in-out infinite;
+}
+
+.animate-rank-admin {
+  animation: rank-glow-admin 1.8s ease-in-out infinite;
 }
