@@ -56,6 +56,14 @@ export async function addWinnings(userId: string, amount: number, gameTitle: str
   };
 }
 
+export async function recordLoss(sessionId: string): Promise<{ success: boolean }> {
+  const { data, error } = await supabase.rpc("record_loss", {
+    p_session_id: sessionId,
+  });
+  if (error) return { success: false };
+  return { success: (data as any)?.success ?? false };
+}
+
 export async function refundBet(userId: string, amount: number, reason: string): Promise<BetResult> {
   const { data, error } = await supabase.rpc("refund_bet", {
     p_amount: amount,
