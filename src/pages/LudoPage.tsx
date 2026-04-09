@@ -447,10 +447,7 @@ const LudoPage = () => {
     );
   }
 
-  // MATCHMAKING with timeout
-  const [matchTimer, setMatchTimer] = useState(0);
-  const MATCH_TIMEOUT = 60;
-
+  // MATCHMAKING timeout effect
   useEffect(() => {
     if (screen !== "matchmaking") { setMatchTimer(0); return; }
     const interval = setInterval(() => {
