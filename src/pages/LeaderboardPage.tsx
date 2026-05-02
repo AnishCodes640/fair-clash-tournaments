@@ -32,7 +32,7 @@ const LeaderboardPage = () => {
     const load = async () => {
       setLoading(true);
       const [profilesRes, sessionsRes, rolesRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, username, display_name, avatar_url, wallet_balance").eq("status", "active"),
+        supabase.rpc("get_public_leaderboard"),
         supabase.from("game_sessions").select("user_id, result, bet_amount, win_amount"),
         supabase.from("user_roles").select("user_id, role"),
       ]);
