@@ -179,6 +179,7 @@ export type Database = {
         Row: {
           board_state: Json
           created_at: string
+          creator_user_id: string | null
           current_turn: number
           dice_value: number | null
           entry_fee: number
@@ -192,6 +193,7 @@ export type Database = {
         Insert: {
           board_state?: Json
           created_at?: string
+          creator_user_id?: string | null
           current_turn?: number
           dice_value?: number | null
           entry_fee?: number
@@ -205,6 +207,7 @@ export type Database = {
         Update: {
           board_state?: Json
           created_at?: string
+          creator_user_id?: string | null
           current_turn?: number
           dice_value?: number | null
           entry_fee?: number
@@ -567,6 +570,17 @@ export type Database = {
       add_winnings: {
         Args: { p_amount: number; p_game_title: string; p_session_id?: string }
         Returns: Json
+      }
+      get_public_leaderboard: {
+        Args: never
+        Returns: {
+          active_theme: string
+          avatar_url: string
+          display_name: string
+          user_id: string
+          username: string
+          wallet_balance: number
+        }[]
       }
       has_role: {
         Args: {
