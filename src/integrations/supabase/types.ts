@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_banners: {
+        Row: {
+          bg_color: string | null
+          body: string | null
+          created_at: string
+          cta_link: string | null
+          cta_text: string | null
+          ends_at: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          priority: number
+          starts_at: string
+          title: string
+        }
+        Insert: {
+          bg_color?: string | null
+          body?: string | null
+          created_at?: string
+          cta_link?: string | null
+          cta_text?: string | null
+          ends_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          priority?: number
+          starts_at?: string
+          title: string
+        }
+        Update: {
+          bg_color?: string | null
+          body?: string | null
+          created_at?: string
+          cta_link?: string | null
+          cta_text?: string | null
+          ends_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          priority?: number
+          starts_at?: string
+          title?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: string
@@ -32,6 +77,27 @@ export type Database = {
           key?: string
           updated_at?: string
           value?: Json
+        }
+        Relationships: []
+      }
+      aviator_daily_pool: {
+        Row: {
+          pool_date: string
+          total_in: number
+          total_out: number
+          updated_at: string
+        }
+        Insert: {
+          pool_date?: string
+          total_in?: number
+          total_out?: number
+          updated_at?: string
+        }
+        Update: {
+          pool_date?: string
+          total_in?: number
+          total_out?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -220,6 +286,71 @@ export type Database = {
         }
         Relationships: []
       }
+      mailbox_messages: {
+        Row: {
+          audience: string
+          body: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          scheduled_at: string
+          sender_id: string
+          target_user_id: string | null
+          title: string
+        }
+        Insert: {
+          audience?: string
+          body: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          scheduled_at?: string
+          sender_id: string
+          target_user_id?: string | null
+          title: string
+        }
+        Update: {
+          audience?: string
+          body?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          scheduled_at?: string
+          sender_id?: string
+          target_user_id?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      mailbox_reads: {
+        Row: {
+          id: string
+          message_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mailbox_reads_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "mailbox_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notices: {
         Row: {
           auto_expiry_hours: number | null
@@ -283,6 +414,41 @@ export type Database = {
         }
         Relationships: []
       }
+      prediction_options: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          label: string
+          match_id: string
+          multiplier: number
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          label: string
+          match_id: string
+          multiplier?: number
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          label?: string
+          match_id?: string
+          multiplier?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prediction_options_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "sports_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active_theme: string
@@ -331,6 +497,122 @@ export type Database = {
           user_id?: string
           username?: string
           wallet_balance?: number
+        }
+        Relationships: []
+      }
+      quiz_session_answers: {
+        Row: {
+          answered_at: string | null
+          correct_answer: string
+          id: string
+          is_correct: boolean | null
+          question_id: string
+          session_id: string
+          user_answer: string | null
+        }
+        Insert: {
+          answered_at?: string | null
+          correct_answer: string
+          id?: string
+          is_correct?: boolean | null
+          question_id: string
+          session_id: string
+          user_answer?: string | null
+        }
+        Update: {
+          answered_at?: string | null
+          correct_answer?: string
+          id?: string
+          is_correct?: boolean | null
+          question_id?: string
+          session_id?: string
+          user_answer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_session_answers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_sessions: {
+        Row: {
+          correct_count: number
+          created_at: string
+          entry_fee: number
+          id: string
+          reward: number
+          status: string
+          user_id: string
+          wrong_count: number
+        }
+        Insert: {
+          correct_count?: number
+          created_at?: string
+          entry_fee?: number
+          id?: string
+          reward?: number
+          status?: string
+          user_id: string
+          wrong_count?: number
+        }
+        Update: {
+          correct_count?: number
+          created_at?: string
+          entry_fee?: number
+          id?: string
+          reward?: number
+          status?: string
+          user_id?: string
+          wrong_count?: number
+        }
+        Relationships: []
+      }
+      sports_matches: {
+        Row: {
+          created_at: string
+          current_players: number
+          description: string | null
+          entry_fee: number
+          id: string
+          max_players: number
+          start_time: string
+          status: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          winning_option_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_players?: number
+          description?: string | null
+          entry_fee?: number
+          id?: string
+          max_players?: number
+          start_time: string
+          status?: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          winning_option_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_players?: number
+          description?: string | null
+          entry_fee?: number
+          id?: string
+          max_players?: number
+          start_time?: string
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          winning_option_id?: string | null
         }
         Relationships: []
       }
@@ -416,6 +698,54 @@ export type Database = {
           },
         ]
       }
+      user_predictions: {
+        Row: {
+          bet_amount: number
+          created_at: string
+          id: string
+          match_id: string
+          option_id: string
+          result: string
+          user_id: string
+          win_amount: number
+        }
+        Insert: {
+          bet_amount: number
+          created_at?: string
+          id?: string
+          match_id: string
+          option_id: string
+          result?: string
+          user_id: string
+          win_amount?: number
+        }
+        Update: {
+          bet_amount?: number
+          created_at?: string
+          id?: string
+          match_id?: string
+          option_id?: string
+          result?: string
+          user_id?: string
+          win_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_predictions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "sports_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_predictions_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "prediction_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -452,6 +782,69 @@ export type Database = {
           purchased_at?: string
           theme_id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_verifications: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          source: string
+          starts_at: string
+          tier: string
+          tier_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          source?: string
+          starts_at?: string
+          tier: string
+          tier_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          source?: string
+          starts_at?: string
+          tier?: string
+          tier_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      verification_tiers: {
+        Row: {
+          display_name: string
+          duration: string
+          duration_days: number
+          id: string
+          is_active: boolean
+          price: number
+          tier: string
+        }
+        Insert: {
+          display_name: string
+          duration: string
+          duration_days: number
+          id: string
+          is_active?: boolean
+          price: number
+          tier: string
+        }
+        Update: {
+          display_name?: string
+          duration?: string
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          price?: number
+          tier?: string
         }
         Relationships: []
       }
@@ -571,6 +964,20 @@ export type Database = {
         Args: { p_amount: number; p_game_title: string; p_session_id?: string }
         Returns: Json
       }
+      admin_grant_verification: {
+        Args: { p_deduct: boolean; p_tier_id: string; p_user_id: string }
+        Returns: Json
+      }
+      aviator_record_bet: { Args: { p_amount: number }; Returns: Json }
+      aviator_record_payout: { Args: { p_amount: number }; Returns: Json }
+      finish_quiz_session: { Args: { p_session_id: string }; Returns: Json }
+      get_active_verification: {
+        Args: { p_user_id: string }
+        Returns: {
+          expires_at: string
+          tier: string
+        }[]
+      }
       get_public_leaderboard: {
         Args: never
         Returns: {
@@ -589,14 +996,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      mailbox_mark_read: { Args: { p_message_id: string }; Returns: Json }
       place_bet: {
         Args: { p_amount: number; p_game_id: string; p_game_title: string }
+        Returns: Json
+      }
+      place_sports_prediction: {
+        Args: { p_match_id: string; p_option_id: string }
         Returns: Json
       }
       purchase_theme: {
         Args: { p_price: number; p_theme_id: string }
         Returns: Json
       }
+      purchase_verification: { Args: { p_tier_id: string }; Returns: Json }
       record_loss: { Args: { p_session_id: string }; Returns: Json }
       refund_bet: {
         Args: { p_amount: number; p_reason: string }
@@ -609,6 +1022,15 @@ export type Database = {
           p_qr_code_url?: string
           p_upi_id?: string
         }
+        Returns: Json
+      }
+      resolve_sports_match: {
+        Args: { p_match_id: string; p_winning_option_id: string }
+        Returns: Json
+      }
+      start_quiz_session: { Args: { p_questions: Json }; Returns: Json }
+      submit_quiz_answer: {
+        Args: { p_answer: string; p_question_id: string; p_session_id: string }
         Returns: Json
       }
     }
