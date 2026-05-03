@@ -27,6 +27,10 @@ import SudokuPage from "./pages/SudokuPage";
 import DoodleJumpPage from "./pages/DoodleJumpPage";
 import NotFound from "./pages/NotFound";
 import SettingsPage from "./pages/SettingsPage";
+import StorePage from "./pages/StorePage";
+import QuizPage from "./pages/QuizPage";
+import SportsPredictionPage from "./pages/SportsPredictionPage";
+import MailboxPage from "./pages/MailboxPage";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +63,10 @@ const App = () => (
                 <Route path="/sudoku" element={<SudokuPage />} />
                 <Route path="/doodle-jump" element={<DoodleJumpPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/store" element={<StorePage />} />
+                <Route path="/quiz" element={<QuizPage />} />
+                <Route path="/sports" element={<SportsPredictionPage />} />
+                <Route path="/mailbox" element={<MailboxPage />} />
               </Route>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<NotFound />} />
