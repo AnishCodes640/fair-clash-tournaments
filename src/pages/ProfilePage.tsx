@@ -230,10 +230,28 @@ const ProfilePage = () => {
         </div>
       )}
 
-      <Link to="/settings"
-        className="w-full h-10 rounded-lg border border-border text-foreground text-sm font-medium flex items-center justify-center gap-2 hover:bg-accent transition-colors mb-2">
-        <Palette className="h-4 w-4" /> Themes & Settings
-      </Link>
+      {/* Achievements */}
+      {Array.isArray(progression?.achievements) && progression.achievements.length > 0 && (
+        <div className="surface-card rounded-xl p-4">
+          <p className="text-sm font-semibold mb-2 flex items-center gap-1.5"><Award className="h-4 w-4 text-primary" /> Achievements</p>
+          <div className="flex flex-wrap gap-1.5">
+            {progression.achievements.slice(-12).map((a: any, i: number) => (
+              <span key={i} className="px-2 py-1 rounded-md bg-secondary text-[10px] font-medium capitalize">
+                {a.type === "level_up" ? `🏅 ${a.level} reached` : a.type}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <Link to="/store" className="h-10 rounded-lg border border-border text-foreground text-sm font-medium flex items-center justify-center gap-2 hover:bg-accent transition-colors">
+          <ShoppingCart className="h-4 w-4" /> Store
+        </Link>
+        <Link to="/settings" className="h-10 rounded-lg border border-border text-foreground text-sm font-medium flex items-center justify-center gap-2 hover:bg-accent transition-colors">
+          <Palette className="h-4 w-4" /> Settings
+        </Link>
+      </div>
 
       <button onClick={async () => { await signOut(); navigate("/"); }}
         className="w-full h-10 rounded-lg border border-destructive/30 text-destructive text-sm font-medium flex items-center justify-center gap-2 hover:bg-destructive/10 transition-colors">
