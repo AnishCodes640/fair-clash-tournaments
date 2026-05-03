@@ -1,16 +1,22 @@
-import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target, Shield, Medal, Award, Star } from "lucide-react";
+import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target, Shield, Medal, Award, Star, Flame } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemedAvatar } from "@/components/ThemedAvatar";
+import { ProgressBadge } from "@/components/ProgressBadge";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 type RankingType = "balance" | "wins" | "games" | "total_bets" | "total_winnings";
+
+type Period = "global" | "weekly" | "monthly";
 
 interface PlayerData {
   user_id: string;
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  active_theme: string | null;
   wallet_balance: number;
   totalGames: number;
   wins: number;
@@ -18,12 +24,17 @@ interface PlayerData {
   totalBets: number;
   totalWinnings: number;
   isAdmin: boolean;
+  level: string;
+  streak: number;
+  bestStreak: number;
+  verifiedTier: string | null;
 }
 
 const LeaderboardPage = () => {
   const { user } = useAuth();
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [ranking, setRanking] = useState<RankingType>("balance");
+  const [period, setPeriod] = useState<Period>("global");
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
   const [selectedHistory, setSelectedHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
