@@ -13,6 +13,7 @@ import memoryLogo from "@/assets/memory-logo.jpg";
 import sudokuLogo from "@/assets/sudoku-logo.png";
 import doodleJumpLogo from "@/assets/doodle-jump-logo.jpg";
 import { cn } from "@/lib/utils";
+import { BannerCarousel } from "@/components/BannerCarousel";
 
 const BUILT_IN_GAMES = [
   { to: "/tic-tac-toe", logo: ticTacToeLogo, name: "Tic Tac Toe", desc: "AI or 2P · Free" },
@@ -79,6 +80,8 @@ const HomePage = () => {
           </div>
         )}
       </section>
+
+      <BannerCarousel />
 
       <section className="grid grid-cols-2 gap-3">
         <StatCard icon={Trophy} label="Active Tournaments" value={String(stats.tournaments)} />
