@@ -175,6 +175,38 @@ const LeaderboardPage = () => {
         <span className="ml-auto text-xs text-muted-foreground font-mono-num">{players.length} players</span>
       </div>
 
+      {/* Period tabs */}
+      <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
+        {(["global","weekly","monthly"] as Period[]).map(p => (
+          <button key={p} onClick={() => setPeriod(p)}
+            className={cn("px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors",
+              period === p ? "bg-card shadow-sm" : "text-muted-foreground")}>{p}</button>
+        ))}
+      </div>
+
+      {/* Podium top 3 */}
+      {!loading && sortedPlayers.length >= 1 && (
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          {[1,0,2].map((podiumIdx, slot) => {
+            const p = sortedPlayers[podiumIdx];
+            if (!p) return <div key={slot} />;
+            const heights = ["h-24","h-32","h-20"];
+            const cls = podiumIdx === 0 ? "podium-gold" : podiumIdx === 1 ? "podium-silver" : "podium-bronze";
+            const avatarUrl = p.avatar_url ? supabase.storage.from("avatars").getPublicUrl(p.avatar_url).data.publicUrl : null;
+            return (
+              <button key={p.user_id} onClick={() => handleSelectPlayer(p)} className={cn("rounded-xl p-3 flex flex-col items-center justify-end text-center", heights[slot], cls)}>
+                <ThemedAvatar src={avatarUrl} name={p.display_name || p.username} themeId={p.active_theme} size={36} />
+                <p className="text-[11px] font-bold mt-1 truncate max-w-full flex items-center gap-1">
+                  {p.display_name || p.username}
+                  <VerifiedBadge tier={p.verifiedTier} size={10} />
+                </p>
+                <p className="text-[10px] font-mono-num text-primary">{getValue(p)}</p>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Ranking tabs */}
       <div className="flex gap-1 overflow-x-auto bg-secondary rounded-lg p-1 no-scrollbar">
         {tabs.map((tab) => (
@@ -208,20 +240,22 @@ const LeaderboardPage = () => {
                   <span className="w-7 flex items-center justify-center">
                     {getRankIcon(i)}
                   </span>
-                  <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> :
-                      <span className="text-xs font-bold text-muted-foreground">{(p.display_name || p.username || "?")[0].toUpperCase()}</span>}
-                  </div>
+                  <ThemedAvatar src={avatarUrl} name={p.display_name || p.username} themeId={p.active_theme} size={32} />
                   <div className="flex-1 min-w-0">
-                    <p className={cn("text-sm font-medium truncate flex items-center gap-1",
+                    <p className={cn("text-sm font-medium truncate flex items-center gap-1.5",
                       p.isAdmin && "text-red-500")}>
                       {p.display_name || p.username}
+                      <VerifiedBadge tier={p.verifiedTier} />
                       {p.isAdmin && (
                         <span className="px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 text-[9px] font-bold tracking-wider uppercase">Admin</span>
                       )}
                       {isCurrentUser && <span className="text-[10px] text-primary">(you)</span>}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">{p.totalGames} games · {p.wins}W/{p.losses}L</p>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <ProgressBadge level={p.level} />
+                      <span>{p.totalGames}G · {p.wins}W/{p.losses}L</span>
+                      {p.streak >= 3 && <span className="flex items-center gap-0.5 text-orange-400 font-semibold"><Flame className="h-3 w-3" />{p.streak}</span>}
+                    </div>
                   </div>
                   <span className="font-mono-num text-xs font-semibold text-primary">{getValue(p)}</span>
                 </button>
