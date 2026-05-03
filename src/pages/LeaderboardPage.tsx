@@ -42,17 +42,33 @@ const LeaderboardPage = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [profilesRes, sessionsRes, rolesRes] = await Promise.all([
+      const since = period === "weekly"
+        ? new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+        : period === "monthly"
+        ? new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString()
+        : null;
+      let sessQ = supabase.from("game_sessions").select("user_id, result, bet_amount, win_amount, created_at");
+      if (since) sessQ = sessQ.gte("created_at", since);
+      const [profilesRes, sessionsRes, rolesRes, progRes, verRes] = await Promise.all([
         supabase.rpc("get_public_leaderboard"),
-        supabase.from("game_sessions").select("user_id, result, bet_amount, win_amount"),
+        sessQ,
         supabase.from("user_roles").select("user_id, role"),
+        supabase.from("player_progression").select("user_id, level, current_streak, best_streak"),
+        supabase.from("user_verifications").select("user_id, tier, expires_at"),
       ]);
 
       const profiles = profilesRes.data || [];
       const sessions = sessionsRes.data || [];
       const roles = rolesRes.data || [];
+      const progs = progRes.data || [];
+      const vers = verRes.data || [];
 
       const adminSet = new Set(roles.filter((r: any) => r.role === "admin").map((r: any) => r.user_id));
+      const progMap: Record<string, any> = {};
+      progs.forEach((p: any) => { progMap[p.user_id] = p; });
+      const verMap: Record<string, string> = {};
+      const now = Date.now();
+      vers.forEach((v: any) => { if (new Date(v.expires_at).getTime() > now) verMap[v.user_id] = v.tier; });
 
       const statsMap: Record<string, { totalGames: number; wins: number; losses: number; totalBets: number; totalWinnings: number }> = {};
       sessions.forEach((s: any) => {
@@ -69,6 +85,7 @@ const LeaderboardPage = () => {
         username: p.username,
         display_name: p.display_name,
         avatar_url: p.avatar_url,
+        active_theme: p.active_theme,
         wallet_balance: Number(p.wallet_balance || 0),
         totalGames: statsMap[p.user_id]?.totalGames || 0,
         wins: statsMap[p.user_id]?.wins || 0,
@@ -76,6 +93,10 @@ const LeaderboardPage = () => {
         totalBets: statsMap[p.user_id]?.totalBets || 0,
         totalWinnings: statsMap[p.user_id]?.totalWinnings || 0,
         isAdmin: adminSet.has(p.user_id),
+        level: progMap[p.user_id]?.level || "bronze",
+        streak: progMap[p.user_id]?.current_streak || 0,
+        bestStreak: progMap[p.user_id]?.best_streak || 0,
+        verifiedTier: verMap[p.user_id] || null,
       }));
 
       setPlayers(enriched);
@@ -86,9 +107,10 @@ const LeaderboardPage = () => {
     const channel = supabase.channel("leaderboard-rt")
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "game_sessions" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "player_progression" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [period]);
 
   const sortedPlayers = [...players].sort((a, b) => {
     switch (ranking) {
