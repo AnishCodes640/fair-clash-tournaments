@@ -1,10 +1,13 @@
-import { User, Mail, Calendar, LogIn, LogOut, Shield, Wallet, Camera, Save, Edit2, Gamepad2, Trophy, Target, TrendingUp, Settings, Palette } from "lucide-react";
+import { User, Mail, Calendar, LogIn, LogOut, Shield, Wallet, Camera, Save, Edit2, Gamepad2, Trophy, Target, TrendingUp, Settings, Palette, ShoppingCart, Flame, Award } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ProgressBadge } from "@/components/ProgressBadge";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { ThemedAvatar } from "@/components/ThemedAvatar";
 
 const ProfilePage = () => {
   const { user, profile, isAdmin, signOut, refreshProfile } = useAuth();
@@ -16,6 +19,8 @@ const ProfilePage = () => {
   const [saving, setSaving] = useState(false);
   const [gameHistory, setGameHistory] = useState<any[]>([]);
   const [stats, setStats] = useState({ games: 0, wins: 0, losses: 0, totalBets: 0, totalWinnings: 0 });
+  const [progression, setProgression] = useState<any>(null);
+  const [verification, setVerification] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -38,6 +43,13 @@ const ProfilePage = () => {
       });
     };
     loadHistory();
+    Promise.all([
+      supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.rpc("get_active_verification", { p_user_id: user.id }),
+    ]).then(([prog, ver]) => {
+      setProgression(prog.data);
+      setVerification((ver.data as any)?.[0] || null);
+    });
   }, [user]);
 
   if (!user) {
