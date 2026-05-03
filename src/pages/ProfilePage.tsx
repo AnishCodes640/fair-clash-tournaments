@@ -1,10 +1,13 @@
-import { User, Mail, Calendar, LogIn, LogOut, Shield, Wallet, Camera, Save, Edit2, Gamepad2, Trophy, Target, TrendingUp, Settings, Palette } from "lucide-react";
+import { User, Mail, Calendar, LogIn, LogOut, Shield, Wallet, Camera, Save, Edit2, Gamepad2, Trophy, Target, TrendingUp, Settings, Palette, ShoppingCart, Flame, Award } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ProgressBadge } from "@/components/ProgressBadge";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { ThemedAvatar } from "@/components/ThemedAvatar";
 
 const ProfilePage = () => {
   const { user, profile, isAdmin, signOut, refreshProfile } = useAuth();
@@ -16,6 +19,8 @@ const ProfilePage = () => {
   const [saving, setSaving] = useState(false);
   const [gameHistory, setGameHistory] = useState<any[]>([]);
   const [stats, setStats] = useState({ games: 0, wins: 0, losses: 0, totalBets: 0, totalWinnings: 0 });
+  const [progression, setProgression] = useState<any>(null);
+  const [verification, setVerification] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -38,6 +43,13 @@ const ProfilePage = () => {
       });
     };
     loadHistory();
+    Promise.all([
+      supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.rpc("get_active_verification", { p_user_id: user.id }),
+    ]).then(([prog, ver]) => {
+      setProgression(prog.data);
+      setVerification((ver.data as any)?.[0] || null);
+    });
   }, [user]);
 
   if (!user) {
@@ -145,16 +157,27 @@ const ProfilePage = () => {
           </div>
         ) : (
           <>
-            <h2 className="text-lg font-semibold">{profile?.display_name || profile?.username || "User"}</h2>
+            <h2 className="text-lg font-semibold flex items-center justify-center gap-1.5">
+              {profile?.display_name || profile?.username || "User"}
+              <VerifiedBadge tier={verification?.tier} size={16} />
+            </h2>
             <p className="text-xs text-muted-foreground">{user.email}</p>
             {profile?.bio && <p className="text-xs text-muted-foreground mt-2 max-w-xs">{profile.bio}</p>}
           </>
         )}
-        {isAdmin && (
-          <span className="mt-2 px-2 py-0.5 rounded-md bg-destructive/10 text-destructive text-xs font-medium flex items-center gap-1">
-            <Shield className="h-3 w-3" /> Admin
-          </span>
-        )}
+        <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+          <ProgressBadge level={progression?.level} xp={progression?.xp} />
+          {progression?.current_streak >= 3 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-500/15 text-orange-400">
+              <Flame className="h-3 w-3" />Streak {progression.current_streak}
+            </span>
+          )}
+          {isAdmin && (
+            <span className="px-2 py-0.5 rounded-md bg-destructive/10 text-destructive text-xs font-medium flex items-center gap-1">
+              <Shield className="h-3 w-3" /> Admin
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -207,10 +230,28 @@ const ProfilePage = () => {
         </div>
       )}
 
-      <Link to="/settings"
-        className="w-full h-10 rounded-lg border border-border text-foreground text-sm font-medium flex items-center justify-center gap-2 hover:bg-accent transition-colors mb-2">
-        <Palette className="h-4 w-4" /> Themes & Settings
-      </Link>
+      {/* Achievements */}
+      {Array.isArray(progression?.achievements) && progression.achievements.length > 0 && (
+        <div className="surface-card rounded-xl p-4">
+          <p className="text-sm font-semibold mb-2 flex items-center gap-1.5"><Award className="h-4 w-4 text-primary" /> Achievements</p>
+          <div className="flex flex-wrap gap-1.5">
+            {progression.achievements.slice(-12).map((a: any, i: number) => (
+              <span key={i} className="px-2 py-1 rounded-md bg-secondary text-[10px] font-medium capitalize">
+                {a.type === "level_up" ? `🏅 ${a.level} reached` : a.type}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <Link to="/store" className="h-10 rounded-lg border border-border text-foreground text-sm font-medium flex items-center justify-center gap-2 hover:bg-accent transition-colors">
+          <ShoppingCart className="h-4 w-4" /> Store
+        </Link>
+        <Link to="/settings" className="h-10 rounded-lg border border-border text-foreground text-sm font-medium flex items-center justify-center gap-2 hover:bg-accent transition-colors">
+          <Palette className="h-4 w-4" /> Settings
+        </Link>
+      </div>
 
       <button onClick={async () => { await signOut(); navigate("/"); }}
         className="w-full h-10 rounded-lg border border-destructive/30 text-destructive text-sm font-medium flex items-center justify-center gap-2 hover:bg-destructive/10 transition-colors">

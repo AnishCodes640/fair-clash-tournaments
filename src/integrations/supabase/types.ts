@@ -414,6 +414,51 @@ export type Database = {
         }
         Relationships: []
       }
+      player_progression: {
+        Row: {
+          achievements: Json
+          best_streak: number
+          created_at: string
+          current_streak: number
+          id: string
+          level: string
+          lifetime_earnings: number
+          lifetime_games: number
+          lifetime_wins: number
+          updated_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          achievements?: Json
+          best_streak?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          level?: string
+          lifetime_earnings?: number
+          lifetime_games?: number
+          lifetime_wins?: number
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          achievements?: Json
+          best_streak?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          level?: string
+          lifetime_earnings?: number
+          lifetime_games?: number
+          lifetime_wins?: number
+          updated_at?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: []
+      }
       prediction_options: {
         Row: {
           created_at: string
@@ -1010,6 +1055,10 @@ export type Database = {
         Returns: Json
       }
       purchase_verification: { Args: { p_tier_id: string }; Returns: Json }
+      record_game_result: {
+        Args: { p_amount: number; p_session_id: string; p_won: boolean }
+        Returns: Json
+      }
       record_loss: { Args: { p_session_id: string }; Returns: Json }
       refund_bet: {
         Args: { p_amount: number; p_reason: string }
