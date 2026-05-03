@@ -157,16 +157,27 @@ const ProfilePage = () => {
           </div>
         ) : (
           <>
-            <h2 className="text-lg font-semibold">{profile?.display_name || profile?.username || "User"}</h2>
+            <h2 className="text-lg font-semibold flex items-center justify-center gap-1.5">
+              {profile?.display_name || profile?.username || "User"}
+              <VerifiedBadge tier={verification?.tier} size={16} />
+            </h2>
             <p className="text-xs text-muted-foreground">{user.email}</p>
             {profile?.bio && <p className="text-xs text-muted-foreground mt-2 max-w-xs">{profile.bio}</p>}
           </>
         )}
-        {isAdmin && (
-          <span className="mt-2 px-2 py-0.5 rounded-md bg-destructive/10 text-destructive text-xs font-medium flex items-center gap-1">
-            <Shield className="h-3 w-3" /> Admin
-          </span>
-        )}
+        <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+          <ProgressBadge level={progression?.level} xp={progression?.xp} />
+          {progression?.current_streak >= 3 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-500/15 text-orange-400">
+              <Flame className="h-3 w-3" />Streak {progression.current_streak}
+            </span>
+          )}
+          {isAdmin && (
+            <span className="px-2 py-0.5 rounded-md bg-destructive/10 text-destructive text-xs font-medium flex items-center gap-1">
+              <Shield className="h-3 w-3" /> Admin
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
