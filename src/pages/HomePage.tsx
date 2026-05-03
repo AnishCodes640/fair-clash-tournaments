@@ -203,20 +203,22 @@ const HomePage = () => {
       {/* Quick Actions */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Link to="/games" className="surface-card rounded-lg p-4 flex items-center justify-between group hover:border-primary/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><Gamepad2 className="h-5 w-5 text-primary" /></div>
-              <div><p className="text-sm font-medium">Browse Games</p><p className="text-xs text-muted-foreground">Find your next match</p></div>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Link to="/sports" className="surface-card rounded-lg p-3 flex flex-col items-center gap-1 hover:border-primary/30 transition-colors">
+            <Trophy className="h-5 w-5 text-primary" />
+            <p className="text-xs font-medium">Sports</p>
           </Link>
-          <Link to="/leaderboard" className="surface-card rounded-lg p-4 flex items-center justify-between group hover:border-primary/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><Crown className="h-5 w-5 text-primary" /></div>
-              <div><p className="text-sm font-medium">Leaderboard</p><p className="text-xs text-muted-foreground">See top players</p></div>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          <Link to="/quiz" className="surface-card rounded-lg p-3 flex flex-col items-center gap-1 hover:border-primary/30 transition-colors">
+            <Star className="h-5 w-5 text-primary" />
+            <p className="text-xs font-medium">Quiz</p>
+          </Link>
+          <Link to="/store" className="surface-card rounded-lg p-3 flex flex-col items-center gap-1 hover:border-primary/30 transition-colors">
+            <Gamepad2 className="h-5 w-5 text-primary" />
+            <p className="text-xs font-medium">Store</p>
+          </Link>
+          <Link to="/leaderboard" className="surface-card rounded-lg p-3 flex flex-col items-center gap-1 hover:border-primary/30 transition-colors">
+            <Crown className="h-5 w-5 text-primary" />
+            <p className="text-xs font-medium">Ranking</p>
           </Link>
         </div>
       </section>
