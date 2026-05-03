@@ -71,10 +71,11 @@ export const QUIZ_BANK: QuizQuestion[] = [
   { id: "h15", difficulty: "hard", question: "Which scientist proposed three laws of motion?", options: ["Einstein", "Newton", "Galileo", "Kepler"], correct: "Newton" },
 ];
 
-export function pickQuizQuestions(): QuizQuestion[] {
+export function pickQuizQuestions(_count: number = 10): QuizQuestion[] {
   const easy = QUIZ_BANK.filter((q) => q.difficulty === "easy");
   const medium = QUIZ_BANK.filter((q) => q.difficulty === "medium");
   const hard = QUIZ_BANK.filter((q) => q.difficulty === "hard");
   const shuffle = <T>(arr: T[]) => [...arr].sort(() => Math.random() - 0.5);
   return [...shuffle(easy).slice(0, 4), ...shuffle(medium).slice(0, 4), ...shuffle(hard).slice(0, 2)];
 }
+
