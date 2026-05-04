@@ -176,6 +176,29 @@ const LeaderboardPage = () => {
         <span className="ml-auto text-xs text-muted-foreground font-mono-num">{players.length} players</span>
       </div>
 
+      {/* Social card */}
+      <div className="grid grid-cols-2 gap-2">
+        <Link to="/social" className="surface-card rounded-xl p-3 flex items-center gap-3 hover:border-primary/30 transition-colors">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Users className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold">Social</p>
+            <p className="text-[10px] text-muted-foreground">Friends, chats & follows</p>
+          </div>
+          <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />
+        </Link>
+        <Link to="/search" className="surface-card rounded-xl p-3 flex items-center gap-3 hover:border-primary/30 transition-colors">
+          <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
+            <Search className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold">Search</p>
+            <p className="text-[10px] text-muted-foreground">Find any player by name</p>
+          </div>
+        </Link>
+      </div>
+
       {/* Period tabs */}
       <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
         {(["global","weekly","monthly"] as Period[]).map(p => (
