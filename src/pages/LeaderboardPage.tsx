@@ -1,5 +1,6 @@
-import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target, Shield, Medal, Award, Star, Flame } from "lucide-react";
+import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target, Shield, Medal, Award, Star, Flame, Users, MessageCircle, Search, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
