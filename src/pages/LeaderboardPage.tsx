@@ -332,6 +332,14 @@ function PlayerDetail({ player, history, onClose }: { player: PlayerData; histor
         <StatBox icon={Target} value={`₹${player.totalBets.toFixed(0)}`} label="Total Bets" color="text-primary" />
         <StatBox icon={TrendingUp} value={`₹${player.totalWinnings.toFixed(0)}`} label="Winnings" color="text-warning" />
       </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Link to={`/u/${player.user_id}`} className="h-9 rounded-lg bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+          <ExternalLink className="h-3 w-3" /> View Full Profile
+        </Link>
+        <Link to={`/chat/${player.user_id}`} className="h-9 rounded-lg border border-border text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-accent transition-colors">
+          <MessageCircle className="h-3 w-3" /> Message
+        </Link>
+      </div>
 
       {history.length > 0 && (
         <div className="border-t border-border pt-3">
