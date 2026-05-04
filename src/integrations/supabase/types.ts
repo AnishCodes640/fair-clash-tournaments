@@ -101,6 +101,39 @@ export type Database = {
         }
         Relationships: []
       }
+      direct_messages: {
+        Row: {
+          body: string
+          created_at: string
+          deleted_for_recipient: boolean
+          deleted_for_sender: boolean
+          id: string
+          is_read: boolean
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          deleted_for_recipient?: boolean
+          deleted_for_sender?: boolean
+          id?: string
+          is_read?: boolean
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          deleted_for_recipient?: boolean
+          deleted_for_sender?: boolean
+          id?: string
+          is_read?: boolean
+          recipient_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
       game_sessions: {
         Row: {
           bet_amount: number | null
@@ -494,6 +527,27 @@ export type Database = {
           },
         ]
       }
+      profile_likes: {
+        Row: {
+          created_at: string
+          id: string
+          liked_id: string
+          liker_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          liked_id: string
+          liker_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          liked_id?: string
+          liker_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active_theme: string
@@ -742,6 +796,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
       }
       user_predictions: {
         Row: {
@@ -1015,6 +1090,7 @@ export type Database = {
       }
       aviator_record_bet: { Args: { p_amount: number }; Returns: Json }
       aviator_record_payout: { Args: { p_amount: number }; Returns: Json }
+      delete_direct_message: { Args: { p_message_id: string }; Returns: Json }
       finish_quiz_session: { Args: { p_session_id: string }; Returns: Json }
       get_active_verification: {
         Args: { p_user_id: string }
@@ -1034,6 +1110,22 @@ export type Database = {
           wallet_balance: number
         }[]
       }
+      get_public_profile: {
+        Args: { p_user_id: string }
+        Returns: {
+          active_theme: string
+          avatar_url: string
+          bio: string
+          created_at: string
+          display_name: string
+          follower_count: number
+          following_count: number
+          is_admin: boolean
+          like_count: number
+          user_id: string
+          username: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1042,6 +1134,7 @@ export type Database = {
         Returns: boolean
       }
       mailbox_mark_read: { Args: { p_message_id: string }; Returns: Json }
+      mark_conversation_read: { Args: { p_other: string }; Returns: Json }
       place_bet: {
         Args: { p_amount: number; p_game_id: string; p_game_title: string }
         Returns: Json
@@ -1077,11 +1170,27 @@ export type Database = {
         Args: { p_match_id: string; p_winning_option_id: string }
         Returns: Json
       }
+      search_users: {
+        Args: { p_query: string }
+        Returns: {
+          active_theme: string
+          avatar_url: string
+          display_name: string
+          user_id: string
+          username: string
+        }[]
+      }
+      send_direct_message: {
+        Args: { p_body: string; p_recipient: string }
+        Returns: Json
+      }
       start_quiz_session: { Args: { p_questions: Json }; Returns: Json }
       submit_quiz_answer: {
         Args: { p_answer: string; p_question_id: string; p_session_id: string }
         Returns: Json
       }
+      toggle_follow: { Args: { p_target: string }; Returns: Json }
+      toggle_profile_like: { Args: { p_target: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user"
