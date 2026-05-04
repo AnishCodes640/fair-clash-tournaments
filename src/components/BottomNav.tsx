@@ -1,13 +1,13 @@
-import { LayoutGrid, Gamepad2, Trophy, Wallet, Crown } from "lucide-react";
+import { LayoutGrid, Gamepad2, Wallet, Crown, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", icon: LayoutGrid, label: "Home" },
   { to: "/games", icon: Gamepad2, label: "Games" },
+  { to: "/social", icon: Users, label: "Social" },
   { to: "/leaderboard", icon: Crown, label: "Ranks" },
   { to: "/wallet", icon: Wallet, label: "Wallet" },
-  { to: "/tournaments", icon: Trophy, label: "Tourneys" },
 ];
 
 export function BottomNav() {

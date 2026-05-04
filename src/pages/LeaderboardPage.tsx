@@ -1,5 +1,6 @@
-import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target, Shield, Medal, Award, Star, Flame } from "lucide-react";
+import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target, Shield, Medal, Award, Star, Flame, Users, MessageCircle, Search, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -175,6 +176,29 @@ const LeaderboardPage = () => {
         <span className="ml-auto text-xs text-muted-foreground font-mono-num">{players.length} players</span>
       </div>
 
+      {/* Social card */}
+      <div className="grid grid-cols-2 gap-2">
+        <Link to="/social" className="surface-card rounded-xl p-3 flex items-center gap-3 hover:border-primary/30 transition-colors">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Users className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold">Social</p>
+            <p className="text-[10px] text-muted-foreground">Friends, chats & follows</p>
+          </div>
+          <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />
+        </Link>
+        <Link to="/search" className="surface-card rounded-xl p-3 flex items-center gap-3 hover:border-primary/30 transition-colors">
+          <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
+            <Search className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold">Search</p>
+            <p className="text-[10px] text-muted-foreground">Find any player by name</p>
+          </div>
+        </Link>
+      </div>
+
       {/* Period tabs */}
       <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
         {(["global","weekly","monthly"] as Period[]).map(p => (
@@ -307,6 +331,14 @@ function PlayerDetail({ player, history, onClose }: { player: PlayerData; histor
         <StatBox icon={Target} value={String(player.losses)} label="Losses" color="text-destructive" />
         <StatBox icon={Target} value={`₹${player.totalBets.toFixed(0)}`} label="Total Bets" color="text-primary" />
         <StatBox icon={TrendingUp} value={`₹${player.totalWinnings.toFixed(0)}`} label="Winnings" color="text-warning" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Link to={`/u/${player.user_id}`} className="h-9 rounded-lg bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+          <ExternalLink className="h-3 w-3" /> View Full Profile
+        </Link>
+        <Link to={`/chat/${player.user_id}`} className="h-9 rounded-lg border border-border text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-accent transition-colors">
+          <MessageCircle className="h-3 w-3" /> Message
+        </Link>
       </div>
 
       {history.length > 0 && (

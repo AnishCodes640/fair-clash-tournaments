@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { installRuntimeMonitor } from "@/lib/runtimeMonitor";
 import HomePage from "./pages/HomePage";
 import GamesPage from "./pages/GamesPage";
 import TournamentsPage from "./pages/TournamentsPage";
@@ -31,51 +33,63 @@ import StorePage from "./pages/StorePage";
 import QuizPage from "./pages/QuizPage";
 import SportsPredictionPage from "./pages/SportsPredictionPage";
 import MailboxPage from "./pages/MailboxPage";
+import PublicProfilePage from "./pages/PublicProfilePage";
+import SocialPage from "./pages/SocialPage";
+import ChatPage from "./pages/ChatPage";
+import SearchPage from "./pages/SearchPage";
+
+installRuntimeMonitor();
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route element={<AppLayout />}>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/games" element={<GamesPage />} />
-                <Route path="/tournaments" element={<TournamentsPage />} />
-                <Route path="/wallet" element={<WalletPage />} />
-                <Route path="/ai" element={<AIPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/admin" element={<AdminPage />} />
-                <Route path="/privacy" element={<PrivacyPage />} />
-                <Route path="/aviator" element={<AviatorPage />} />
-                <Route path="/play/:id" element={<GamePlayPage />} />
-                <Route path="/leaderboard" element={<LeaderboardPage />} />
-                <Route path="/ludo" element={<LudoPage />} />
-                <Route path="/rules" element={<RulesPage />} />
-                <Route path="/tic-tac-toe" element={<TicTacToePage />} />
-                <Route path="/snake" element={<SnakePage />} />
-                <Route path="/memory" element={<MemoryPage />} />
-                <Route path="/sudoku" element={<SudokuPage />} />
-                <Route path="/doodle-jump" element={<DoodleJumpPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/store" element={<StorePage />} />
-                <Route path="/quiz" element={<QuizPage />} />
-                <Route path="/sports" element={<SportsPredictionPage />} />
-                <Route path="/mailbox" element={<MailboxPage />} />
-              </Route>
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route element={<AppLayout />}>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/games" element={<GamesPage />} />
+                  <Route path="/tournaments" element={<TournamentsPage />} />
+                  <Route path="/wallet" element={<WalletPage />} />
+                  <Route path="/ai" element={<AIPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/privacy" element={<PrivacyPage />} />
+                  <Route path="/aviator" element={<AviatorPage />} />
+                  <Route path="/play/:id" element={<GamePlayPage />} />
+                  <Route path="/leaderboard" element={<LeaderboardPage />} />
+                  <Route path="/ludo" element={<LudoPage />} />
+                  <Route path="/rules" element={<RulesPage />} />
+                  <Route path="/tic-tac-toe" element={<TicTacToePage />} />
+                  <Route path="/snake" element={<SnakePage />} />
+                  <Route path="/memory" element={<MemoryPage />} />
+                  <Route path="/sudoku" element={<SudokuPage />} />
+                  <Route path="/doodle-jump" element={<DoodleJumpPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/store" element={<StorePage />} />
+                  <Route path="/quiz" element={<QuizPage />} />
+                  <Route path="/sports" element={<SportsPredictionPage />} />
+                  <Route path="/mailbox" element={<MailboxPage />} />
+                  <Route path="/social" element={<SocialPage />} />
+                  <Route path="/search" element={<SearchPage />} />
+                  <Route path="/u/:userId" element={<PublicProfilePage />} />
+                  <Route path="/chat/:userId" element={<ChatPage />} />
+                </Route>
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
