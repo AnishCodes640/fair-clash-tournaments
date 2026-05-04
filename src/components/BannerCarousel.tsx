@@ -29,7 +29,8 @@ export function BannerCarousel() {
   }, [banners.length]);
 
   if (banners.length === 0) return null;
-  const b = banners[idx];
+  const b = banners[idx % banners.length] || banners[0];
+  if (!b) return null;
 
   return (
     <div className="rounded-xl overflow-hidden border border-border relative" style={{ background: b.bg_color || "#1a1a2e" }}>
