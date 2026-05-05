@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Users, MessageCircle, Search, UserPlus, Heart } from "lucide-react";
+import { Users, MessageCircle, Search, Rss, Trophy, Gamepad2 } from "lucide-react";
 import { ThemedAvatar } from "@/components/ThemedAvatar";
 import { cn } from "@/lib/utils";
 
@@ -20,10 +20,16 @@ interface Conv {
 const SocialPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"chats" | "following" | "followers">("chats");
+  const [tab, setTab] = useState<"feed" | "chats" | "following" | "followers">("feed");
   const [conversations, setConversations] = useState<Conv[]>([]);
   const [following, setFollowing] = useState<any[]>([]);
   const [followers, setFollowers] = useState<any[]>([]);
+  const [feed, setFeed] = useState<any[]>([]);
+
+  const loadFeed = async () => {
+    const { data } = await supabase.rpc("get_friend_feed", { p_limit: 30 });
+    setFeed(data || []);
+  };
 
   const loadConversations = async () => {
     if (!user) return;
@@ -97,9 +103,11 @@ const SocialPage = () => {
     if (!user) return;
     loadConversations();
     loadFollows();
+    loadFeed();
     const ch = supabase.channel("social-rt")
       .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages" }, loadConversations)
-      .on("postgres_changes", { event: "*", schema: "public", table: "user_follows" }, loadFollows)
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_follows" }, () => { loadFollows(); loadFeed(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "game_sessions" }, loadFeed)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user]);
@@ -127,7 +135,7 @@ const SocialPage = () => {
       </div>
 
       <div className="flex gap-1 bg-secondary rounded-lg p-1">
-        {(["chats","following","followers"] as const).map((t) => (
+        {(["feed","chats","following","followers"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={cn("flex-1 py-2 rounded-md text-xs font-medium capitalize transition-colors",
               tab === t ? "bg-card shadow-sm" : "text-muted-foreground")}>
@@ -140,6 +148,41 @@ const SocialPage = () => {
           </button>
         ))}
       </div>
+
+      {tab === "feed" && (
+        feed.length === 0 ? (
+          <div className="surface-card rounded-xl p-12 text-center text-xs text-muted-foreground">
+            <Rss className="h-5 w-5 mx-auto mb-2 opacity-50" />
+            Follow players to see their activity here.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {feed.map((f: any, i: number) => {
+              const avatarUrl = f.avatar_url ? supabase.storage.from("avatars").getPublicUrl(f.avatar_url).data.publicUrl : null;
+              const Icon = f.kind === "level" ? Trophy : Gamepad2;
+              return (
+                <div key={i} className="surface-card rounded-xl p-3 flex items-center gap-3">
+                  <Link to={`/u/${f.user_id}`}>
+                    <ThemedAvatar src={avatarUrl} name={f.display_name || f.username} themeId={f.active_theme} variant="box" size={40} />
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <Link to={`/u/${f.user_id}`} className="text-sm font-bold truncate hover:underline">
+                      {f.display_name || f.username}
+                    </Link>
+                    <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+                      <Icon className="h-3 w-3" /> {f.summary}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground">{new Date(f.occurred_at).toLocaleString()}</p>
+                  </div>
+                  <Link to={`/chat/${f.user_id}`} className="h-8 w-8 rounded-full bg-secondary hover:bg-accent flex items-center justify-center">
+                    <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        )
+      )}
 
       {tab === "chats" && (
         conversations.length === 0 ? (
