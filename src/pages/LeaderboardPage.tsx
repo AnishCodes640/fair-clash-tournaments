@@ -1,5 +1,5 @@
-import { Crown, User, Gamepad2, Trophy, Wallet, TrendingUp, Target, Shield, Medal, Award, Star, Flame, Users, MessageCircle, Search, ExternalLink } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Crown, Gamepad2, Trophy, Wallet, TrendingUp, Target, Medal, Award, Flame, Users, MessageCircle, Search, ExternalLink, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -7,9 +7,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ThemedAvatar } from "@/components/ThemedAvatar";
 import { ProgressBadge } from "@/components/ProgressBadge";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { LeaderboardSkeleton } from "@/components/LeaderboardSkeleton";
+import { getTheme } from "@/lib/themes";
 
 type RankingType = "balance" | "wins" | "games" | "total_bets" | "total_winnings";
-
 type Period = "global" | "weekly" | "monthly";
 
 interface PlayerData {
@@ -26,23 +27,35 @@ interface PlayerData {
   totalWinnings: number;
   isAdmin: boolean;
   level: string;
+  xp: number;
   streak: number;
   bestStreak: number;
   verifiedTier: string | null;
+  achievements: any[];
 }
+
+const LEVEL_THRESHOLDS: Record<string, number> = { bronze: 200, silver: 500, gold: 1200, diamond: 3000 };
+const NEXT_LEVEL: Record<string, string> = { bronze: "silver", silver: "gold", gold: "diamond", diamond: "diamond" };
+
+// In-memory cache to avoid loading flicker when switching periods
+const cache = new Map<Period, PlayerData[]>();
 
 const LeaderboardPage = () => {
   const { user } = useAuth();
-  const [players, setPlayers] = useState<PlayerData[]>([]);
+  const [players, setPlayers] = useState<PlayerData[]>(() => cache.get("global") || []);
   const [ranking, setRanking] = useState<RankingType>("balance");
   const [period, setPeriod] = useState<Period>("global");
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerData | null>(null);
   const [selectedHistory, setSelectedHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cache.has("global"));
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
-      setLoading(true);
+      const cached = cache.get(period);
+      if (cached) { setPlayers(cached); setLoading(false); }
+      else setLoading(true);
+
       const since = period === "weekly"
         ? new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
         : period === "monthly"
@@ -54,9 +67,11 @@ const LeaderboardPage = () => {
         supabase.rpc("get_public_leaderboard"),
         sessQ,
         supabase.from("user_roles").select("user_id, role"),
-        supabase.from("player_progression").select("user_id, level, current_streak, best_streak"),
+        supabase.from("player_progression").select("user_id, level, xp, current_streak, best_streak, achievements"),
         supabase.from("user_verifications").select("user_id, tier, expires_at"),
       ]);
+
+      if (cancelled) return;
 
       const profiles = profilesRes.data || [];
       const sessions = sessionsRes.data || [];
@@ -71,7 +86,7 @@ const LeaderboardPage = () => {
       const now = Date.now();
       vers.forEach((v: any) => { if (new Date(v.expires_at).getTime() > now) verMap[v.user_id] = v.tier; });
 
-      const statsMap: Record<string, { totalGames: number; wins: number; losses: number; totalBets: number; totalWinnings: number }> = {};
+      const statsMap: Record<string, any> = {};
       sessions.forEach((s: any) => {
         if (!statsMap[s.user_id]) statsMap[s.user_id] = { totalGames: 0, wins: 0, losses: 0, totalBets: 0, totalWinnings: 0 };
         statsMap[s.user_id].totalGames++;
@@ -95,25 +110,28 @@ const LeaderboardPage = () => {
         totalWinnings: statsMap[p.user_id]?.totalWinnings || 0,
         isAdmin: adminSet.has(p.user_id),
         level: progMap[p.user_id]?.level || "bronze",
+        xp: progMap[p.user_id]?.xp || 0,
         streak: progMap[p.user_id]?.current_streak || 0,
         bestStreak: progMap[p.user_id]?.best_streak || 0,
         verifiedTier: verMap[p.user_id] || null,
+        achievements: Array.isArray(progMap[p.user_id]?.achievements) ? progMap[p.user_id].achievements : [],
       }));
 
+      cache.set(period, enriched);
       setPlayers(enriched);
       setLoading(false);
     };
     load();
 
     const channel = supabase.channel("leaderboard-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "game_sessions" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "player_progression" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => { cache.delete(period); load(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "game_sessions" }, () => { cache.delete(period); load(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "player_progression" }, () => { cache.delete(period); load(); })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, [period]);
 
-  const sortedPlayers = [...players].sort((a, b) => {
+  const sortedPlayers = useMemo(() => [...players].sort((a, b) => {
     switch (ranking) {
       case "balance": return b.wallet_balance - a.wallet_balance;
       case "wins": return b.wins - a.wins;
@@ -122,7 +140,7 @@ const LeaderboardPage = () => {
       case "total_winnings": return b.totalWinnings - a.totalWinnings;
       default: return 0;
     }
-  });
+  }), [players, ranking]);
 
   const getValue = (p: PlayerData) => {
     switch (ranking) {
@@ -145,38 +163,20 @@ const LeaderboardPage = () => {
   const handleSelectPlayer = async (p: PlayerData) => {
     setSelectedPlayer(p);
     const { data } = await supabase
-      .from("game_sessions")
-      .select("*")
-      .eq("user_id", p.user_id)
-      .order("created_at", { ascending: false })
-      .limit(20);
+      .from("game_sessions").select("*").eq("user_id", p.user_id)
+      .order("created_at", { ascending: false }).limit(20);
     setSelectedHistory(data || []);
   };
 
-  const getRankIcon = (rank: number) => {
-    if (rank === 0) return <Crown className="h-4 w-4 text-yellow-500" />;
-    if (rank === 1) return <Medal className="h-4 w-4 text-gray-400" />;
-    if (rank === 2) return <Award className="h-4 w-4 text-orange-400" />;
-    return <span className="text-xs font-bold font-mono-num text-muted-foreground w-4 text-center">#{rank + 1}</span>;
-  };
-
-  const getRankStyle = (rank: number, isAdmin: boolean) => {
-    if (isAdmin) return "bg-red-500/8 border-l-2 border-l-red-500/40 animate-rank-admin";
-    if (rank === 0) return "bg-yellow-500/8 border-l-2 border-l-yellow-500/40 animate-rank-gold animate-rank-shine";
-    if (rank === 1) return "bg-gray-400/8 border-l-2 border-l-gray-400/40 animate-rank-silver";
-    if (rank === 2) return "bg-orange-400/8 border-l-2 border-l-orange-400/40 animate-rank-bronze";
-    return "";
-  };
-
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
+    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 animate-fade-in pb-24">
       <div className="flex items-center gap-2">
         <Crown className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-bold tracking-tight">Leaderboard</h1>
         <span className="ml-auto text-xs text-muted-foreground font-mono-num">{players.length} players</span>
       </div>
 
-      {/* Social card */}
+      {/* Social shortcuts */}
       <div className="grid grid-cols-2 gap-2">
         <Link to="/social" className="surface-card rounded-xl p-3 flex items-center gap-3 hover:border-primary/30 transition-colors">
           <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -184,7 +184,7 @@ const LeaderboardPage = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold">Social</p>
-            <p className="text-[10px] text-muted-foreground">Friends, chats & follows</p>
+            <p className="text-[10px] text-muted-foreground">Friends, chats & feed</p>
           </div>
           <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />
         </Link>
@@ -200,150 +200,201 @@ const LeaderboardPage = () => {
       </div>
 
       {/* Period tabs */}
-      <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
+      <div className="flex gap-1 bg-secondary rounded-xl p-1">
         {(["global","weekly","monthly"] as Period[]).map(p => (
           <button key={p} onClick={() => setPeriod(p)}
-            className={cn("px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors",
-              period === p ? "bg-card shadow-sm" : "text-muted-foreground")}>{p}</button>
+            className={cn("flex-1 px-3 py-2 rounded-lg text-xs font-semibold capitalize transition-all",
+              period === p ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>{p}</button>
         ))}
       </div>
 
-      {/* Podium top 3 */}
-      {!loading && sortedPlayers.length >= 1 && (
-        <div className="grid grid-cols-3 gap-2 mb-2">
-          {[1,0,2].map((podiumIdx, slot) => {
-            const p = sortedPlayers[podiumIdx];
-            if (!p) return <div key={slot} />;
-            const heights = ["h-24","h-32","h-20"];
-            const cls = podiumIdx === 0 ? "podium-gold" : podiumIdx === 1 ? "podium-silver" : "podium-bronze";
-            const avatarUrl = p.avatar_url ? supabase.storage.from("avatars").getPublicUrl(p.avatar_url).data.publicUrl : null;
-            return (
-              <button key={p.user_id} onClick={() => handleSelectPlayer(p)} className={cn("rounded-xl p-3 flex flex-col items-center justify-end text-center", heights[slot], cls)}>
-                <ThemedAvatar src={avatarUrl} name={p.display_name || p.username} themeId={p.active_theme} size={36} />
-                <p className="text-[11px] font-bold mt-1 truncate max-w-full flex items-center gap-1">
-                  {p.display_name || p.username}
-                  <VerifiedBadge tier={p.verifiedTier} size={10} />
-                </p>
-                <p className="text-[10px] font-mono-num text-primary">{getValue(p)}</p>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Ranking tabs */}
-      <div className="flex gap-1 overflow-x-auto bg-secondary rounded-lg p-1 no-scrollbar">
-        {tabs.map((tab) => (
-          <button key={tab.id} onClick={() => setRanking(tab.id)}
-            className={cn("flex items-center gap-1.5 py-2 px-3 rounded-md text-xs font-medium whitespace-nowrap transition-colors",
-              ranking === tab.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-            <tab.icon className="h-3.5 w-3.5" />{tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Selected player detail */}
-      {selectedPlayer && (
-        <PlayerDetail player={selectedPlayer} history={selectedHistory} onClose={() => { setSelectedPlayer(null); setSelectedHistory([]); }} />
-      )}
-
-      {/* Rankings list */}
-      {loading ? (
-        <div className="surface-card rounded-xl p-12 text-center text-sm text-muted-foreground">Loading rankings...</div>
+      {loading && players.length === 0 ? (
+        <LeaderboardSkeleton />
       ) : (
-        <div className="surface-card rounded-xl overflow-hidden">
-          <div className="divide-y divide-border">
-            {sortedPlayers.map((p, i) => {
+        <>
+          {/* Podium */}
+          {sortedPlayers.length > 0 && <Podium players={sortedPlayers.slice(0, 3)} onSelect={handleSelectPlayer} getValue={getValue} />}
+
+          {/* Ranking tabs */}
+          <div className="flex gap-1 overflow-x-auto bg-secondary rounded-xl p-1 no-scrollbar">
+            {tabs.map((tab) => (
+              <button key={tab.id} onClick={() => setRanking(tab.id)}
+                className={cn("flex items-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-all",
+                  ranking === tab.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                <tab.icon className="h-3.5 w-3.5" />{tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Selected player drawer */}
+          {selectedPlayer && (
+            <PlayerDetail player={selectedPlayer} history={selectedHistory} onClose={() => { setSelectedPlayer(null); setSelectedHistory([]); }} />
+          )}
+
+          {/* Rankings list */}
+          <div className="space-y-2">
+            {sortedPlayers.slice(3).map((p, idx) => {
+              const rank = idx + 4;
               const isCurrentUser = user?.id === p.user_id;
-              const avatarUrl = p.avatar_url ? supabase.storage.from("avatars").getPublicUrl(p.avatar_url).data.publicUrl : null;
               return (
-                <button key={p.user_id} onClick={() => handleSelectPlayer(p)}
-                  className={cn("w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-accent/50 transition-colors",
-                    isCurrentUser && "bg-primary/5",
-                    getRankStyle(i, p.isAdmin))}>
-                  <span className="w-7 flex items-center justify-center">
-                    {getRankIcon(i)}
-                  </span>
-                  <ThemedAvatar src={avatarUrl} name={p.display_name || p.username} themeId={p.active_theme} size={32} />
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("text-sm font-medium truncate flex items-center gap-1.5",
-                      p.isAdmin && "text-red-500")}>
-                      {p.display_name || p.username}
-                      <VerifiedBadge tier={p.verifiedTier} />
-                      {p.isAdmin && (
-                        <span className="px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 text-[9px] font-bold tracking-wider uppercase">Admin</span>
-                      )}
-                      {isCurrentUser && <span className="text-[10px] text-primary">(you)</span>}
-                    </p>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                      <ProgressBadge level={p.level} />
-                      <span>{p.totalGames}G · {p.wins}W/{p.losses}L</span>
-                      {p.streak >= 3 && <span className="flex items-center gap-0.5 text-orange-400 font-semibold"><Flame className="h-3 w-3" />{p.streak}</span>}
-                    </div>
-                  </div>
-                  <span className="font-mono-num text-xs font-semibold text-primary">{getValue(p)}</span>
-                </button>
+                <PlayerCard key={p.user_id} player={p} rank={rank} isCurrentUser={isCurrentUser}
+                  value={getValue(p)} onSelect={() => handleSelectPlayer(p)} />
               );
             })}
             {sortedPlayers.length === 0 && (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">No players yet</div>
+              <div className="surface-card rounded-2xl px-4 py-12 text-center text-sm text-muted-foreground">No players yet</div>
             )}
           </div>
-        </div>
+        </>
       )}
     </div>
   );
 };
 
-function PlayerDetail({ player, history, onClose }: { player: PlayerData; history: any[]; onClose: () => void }) {
+function Podium({ players, onSelect, getValue }: { players: PlayerData[]; onSelect: (p: PlayerData) => void; getValue: (p: PlayerData) => string }) {
+  // Order on screen: 2nd, 1st, 3rd
+  const order = [players[1], players[0], players[2]].filter(Boolean);
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:gap-3 items-end">
+      {order.map((p) => {
+        const idx = players.indexOf(p);
+        return <PodiumCard key={p.user_id} player={p} place={idx} value={getValue(p)} onClick={() => onSelect(p)} />;
+      })}
+    </div>
+  );
+}
+
+function PodiumCard({ player, place, value, onClick }: { player: PlayerData; place: number; value: string; onClick: () => void }) {
+  const theme = getTheme(player.active_theme);
   const avatarUrl = player.avatar_url ? supabase.storage.from("avatars").getPublicUrl(player.avatar_url).data.publicUrl : null;
-  const winRate = player.totalGames > 0 ? ((player.wins / player.totalGames) * 100).toFixed(0) : "0";
+  const podiumClass = place === 0 ? "podium-gold" : place === 1 ? "podium-silver" : "podium-bronze";
+  const heightClass = place === 0 ? "min-h-[180px] sm:min-h-[200px]" : "min-h-[148px] sm:min-h-[164px]";
+  const sizeAvatar = place === 0 ? 64 : 52;
+  const rankLabel = place === 0 ? "1st" : place === 1 ? "2nd" : "3rd";
 
   return (
-    <div className={cn("surface-card rounded-xl p-4 space-y-3 animate-fade-in border",
+    <button onClick={onClick}
+      className={cn("relative rounded-2xl p-3 pt-6 flex flex-col items-center justify-end text-center bg-card overflow-hidden",
+        heightClass, podiumClass, theme.glowClass)}>
+      {place === 0 && (
+        <Crown className="absolute top-1 left-1/2 -translate-x-1/2 h-5 w-5 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
+      )}
+      <span className="absolute top-2 right-2 text-[9px] font-bold font-mono-num px-1.5 py-0.5 rounded-md bg-background/60 backdrop-blur-sm">
+        {rankLabel}
+      </span>
+      <ThemedAvatar src={avatarUrl} name={player.display_name || player.username} themeId={player.active_theme} variant="box" size={sizeAvatar} />
+      <p className="text-[11px] sm:text-xs font-bold mt-2 truncate max-w-full flex items-center gap-1 justify-center">
+        {player.display_name || player.username}
+        <VerifiedBadge tier={player.verifiedTier} size={11} />
+      </p>
+      <div className="flex items-center gap-1 mt-1">
+        <ProgressBadge level={player.level} className="!text-[8px] !px-1.5 !py-0" />
+      </div>
+      <p className="text-[11px] font-mono-num text-primary font-bold mt-1">{value}</p>
+      {player.streak >= 3 && (
+        <p className="text-[9px] flex items-center gap-0.5 text-orange-400 font-semibold mt-0.5">
+          <Flame className="h-2.5 w-2.5" />{player.streak} streak
+        </p>
+      )}
+    </button>
+  );
+}
+
+function PlayerCard({ player, rank, isCurrentUser, value, onSelect }: {
+  player: PlayerData; rank: number; isCurrentUser: boolean; value: string; onSelect: () => void;
+}) {
+  const theme = getTheme(player.active_theme);
+  const avatarUrl = player.avatar_url ? supabase.storage.from("avatars").getPublicUrl(player.avatar_url).data.publicUrl : null;
+  const next = NEXT_LEVEL[player.level] || "diamond";
+  const threshold = LEVEL_THRESHOLDS[next] || 1200;
+  const progress = Math.min(100, (player.xp / threshold) * 100);
+  const winRate = player.totalGames > 0 ? Math.round((player.wins / player.totalGames) * 100) : 0;
+
+  return (
+    <button onClick={onSelect}
+      className={cn(
+        "w-full surface-card rounded-2xl p-3 flex items-center gap-3 text-left transition-all hover:translate-x-0.5 hover:border-primary/30",
+        theme.rowClass,
+        isCurrentUser && "ring-1 ring-primary/40",
+        player.isAdmin && "border-red-500/30 bg-red-500/5"
+      )}>
+      <span className="w-6 text-center font-mono-num font-bold text-xs text-muted-foreground">#{rank}</span>
+      <ThemedAvatar src={avatarUrl} name={player.display_name || player.username} themeId={player.active_theme} variant="box" size={48} />
+      <div className="flex-1 min-w-0 space-y-1">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <p className={cn("text-sm font-bold truncate flex items-center gap-1", player.isAdmin && "text-red-500")}>
+            {player.display_name || player.username}
+            <VerifiedBadge tier={player.verifiedTier} size={12} />
+          </p>
+          {player.isAdmin && (
+            <span className="px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 text-[8px] font-bold tracking-wider uppercase">Admin</span>
+          )}
+          {isCurrentUser && <span className="text-[9px] text-primary font-bold uppercase">You</span>}
+        </div>
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
+          <ProgressBadge level={player.level} className="!text-[9px] !px-1.5 !py-0" />
+          <span className="font-mono-num">{player.totalGames}G · {winRate}% WR</span>
+          {player.streak >= 3 && (
+            <span className="flex items-center gap-0.5 text-orange-400 font-semibold">
+              <Flame className="h-3 w-3" />{player.streak}
+            </span>
+          )}
+          {player.achievements.length > 0 && (
+            <span className="flex items-center gap-0.5 text-primary font-semibold">
+              <Award className="h-3 w-3" />{player.achievements.length}
+            </span>
+          )}
+        </div>
+        {/* XP progress bar */}
+        <div className="h-1 rounded-full bg-secondary overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-primary to-primary/60 transition-all" style={{ width: `${progress}%` }} />
+        </div>
+      </div>
+      <span className="font-mono-num text-sm font-bold text-primary whitespace-nowrap">{value}</span>
+    </button>
+  );
+}
+
+function PlayerDetail({ player, history, onClose }: { player: PlayerData; history: any[]; onClose: () => void }) {
+  const avatarUrl = player.avatar_url ? supabase.storage.from("avatars").getPublicUrl(player.avatar_url).data.publicUrl : null;
+  const winRate = player.totalGames > 0 ? Math.round((player.wins / player.totalGames) * 100) : 0;
+
+  return (
+    <div className={cn("surface-card rounded-2xl p-4 space-y-3 animate-fade-in border",
       player.isAdmin ? "border-red-500/30" : "border-primary/20")}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={cn("h-12 w-12 rounded-full flex items-center justify-center overflow-hidden",
-            player.isAdmin ? "ring-2 ring-red-500/50" : "bg-secondary")}>
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <User className="h-6 w-6 text-muted-foreground" />
-            )}
-          </div>
+          <ThemedAvatar src={avatarUrl} name={player.display_name || player.username} themeId={player.active_theme} variant="box" size={56} />
           <div>
-            <p className={cn("text-sm font-semibold flex items-center gap-1.5",
-              player.isAdmin && "text-red-500")}>
+            <p className={cn("text-sm font-bold flex items-center gap-1.5", player.isAdmin && "text-red-500")}>
               {player.display_name || player.username}
-              {player.isAdmin && (
-                <span className="px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 text-[10px] font-bold">ADMIN</span>
-              )}
+              <VerifiedBadge tier={player.verifiedTier} size={14} />
             </p>
-            <p className="text-[10px] text-muted-foreground">Win rate: {winRate}%</p>
+            <p className="text-[10px] text-muted-foreground">Win rate: {winRate}% · Best streak: {player.bestStreak}</p>
           </div>
         </div>
-        <button onClick={onClose} className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center text-xs text-muted-foreground hover:text-foreground">✕</button>
+        <button onClick={onClose} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground">
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         <StatBox icon={Gamepad2} value={String(player.totalGames)} label="Games" />
         <StatBox icon={Trophy} value={String(player.wins)} label="Wins" color="text-success" />
         <StatBox icon={Target} value={String(player.losses)} label="Losses" color="text-destructive" />
-        <StatBox icon={Target} value={`₹${player.totalBets.toFixed(0)}`} label="Total Bets" color="text-primary" />
+        <StatBox icon={Target} value={`₹${player.totalBets.toFixed(0)}`} label="Bets" color="text-primary" />
         <StatBox icon={TrendingUp} value={`₹${player.totalWinnings.toFixed(0)}`} label="Winnings" color="text-warning" />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Link to={`/u/${player.user_id}`} className="h-9 rounded-lg bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
-          <ExternalLink className="h-3 w-3" /> View Full Profile
+          <ExternalLink className="h-3 w-3" /> Full Profile
         </Link>
         <Link to={`/chat/${player.user_id}`} className="h-9 rounded-lg border border-border text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-accent transition-colors">
           <MessageCircle className="h-3 w-3" /> Message
         </Link>
       </div>
-
       {history.length > 0 && (
         <div className="border-t border-border pt-3">
-          <p className="text-xs font-semibold mb-2">Recent Games</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Recent Games</p>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {history.map((g: any) => (
               <div key={g.id} className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-md bg-secondary/50">
@@ -351,7 +402,7 @@ function PlayerDetail({ player, history, onClose }: { player: PlayerData; histor
                 <div className="flex items-center gap-2">
                   {Number(g.bet_amount) > 0 && <span className="text-muted-foreground">₹{Number(g.bet_amount).toFixed(0)}</span>}
                   <span className={cn("font-medium px-1.5 py-0.5 rounded",
-                    (g.result === "win" || g.result === "won") ? "bg-success/10 text-success" : 
+                    (g.result === "win" || g.result === "won") ? "bg-success/10 text-success" :
                     (g.result === "loss" || g.result === "lost") ? "bg-destructive/10 text-destructive" : "text-muted-foreground"
                   )}>{(g.result === "win" || g.result === "won") ? "Win" : (g.result === "loss" || g.result === "lost") ? "Loss" : g.result}</span>
                 </div>
@@ -366,10 +417,10 @@ function PlayerDetail({ player, history, onClose }: { player: PlayerData; histor
 
 function StatBox({ icon: Icon, value, label, color }: { icon: any; value: string; label: string; color?: string }) {
   return (
-    <div className="bg-secondary rounded-lg p-2 text-center">
+    <div className="surface-card rounded-lg p-2.5 text-center">
       <Icon className={cn("h-3.5 w-3.5 mx-auto mb-1", color || "text-muted-foreground")} />
-      <p className={cn("text-sm font-bold font-mono-num", color)}>{value}</p>
-      <p className="text-[10px] text-muted-foreground">{label}</p>
+      <p className={cn("text-xs font-bold font-mono-num", color)}>{value}</p>
+      <p className="text-[9px] text-muted-foreground">{label}</p>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { ArrowLeft, Send, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ThemedAvatar } from "@/components/ThemedAvatar";
+import { UserActionsMenu } from "@/components/UserActionsMenu";
 
 interface Message {
   id: string;
@@ -122,6 +123,7 @@ const ChatPage = () => {
             </div>
           </Link>
         )}
+        {other && <UserActionsMenu targetUserId={other.user_id} targetName={other.username} contextUrl={`/chat/${other.user_id}`} />}
       </div>
 
       {/* Messages */}

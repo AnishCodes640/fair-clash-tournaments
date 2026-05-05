@@ -80,6 +80,36 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_flags: {
+        Row: {
+          created_at: string
+          details: Json
+          id: string
+          rule: string
+          severity: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          id?: string
+          rule: string
+          severity?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          id?: string
+          rule?: string
+          severity?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       aviator_daily_pool: {
         Row: {
           pool_date: string
@@ -797,6 +827,27 @@ export type Database = {
           },
         ]
       }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       user_follows: {
         Row: {
           created_at: string
@@ -865,6 +916,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_reports: {
+        Row: {
+          admin_note: string | null
+          category: string
+          context_url: string | null
+          created_at: string
+          id: string
+          reason: string
+          reported_id: string
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          admin_note?: string | null
+          category: string
+          context_url?: string | null
+          created_at?: string
+          id?: string
+          reason: string
+          reported_id: string
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          admin_note?: string | null
+          category?: string
+          context_url?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          reported_id?: string
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -1099,6 +1192,19 @@ export type Database = {
           tier: string
         }[]
       }
+      get_friend_feed: {
+        Args: { p_limit?: number }
+        Returns: {
+          active_theme: string
+          avatar_url: string
+          display_name: string
+          kind: string
+          occurred_at: string
+          summary: string
+          user_id: string
+          username: string
+        }[]
+      }
       get_public_leaderboard: {
         Args: never
         Returns: {
@@ -1133,6 +1239,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_my_blocks: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          blocked_id: string
+          created_at: string
+          display_name: string
+          username: string
+        }[]
+      }
       mailbox_mark_read: { Args: { p_message_id: string }; Returns: Json }
       mark_conversation_read: { Args: { p_other: string }; Returns: Json }
       place_bet: {
@@ -1166,6 +1282,10 @@ export type Database = {
         }
         Returns: Json
       }
+      resolve_report: {
+        Args: { p_id: string; p_note?: string; p_status: string }
+        Returns: Json
+      }
       resolve_sports_match: {
         Args: { p_match_id: string; p_winning_option_id: string }
         Returns: Json
@@ -1189,6 +1309,16 @@ export type Database = {
         Args: { p_answer: string; p_question_id: string; p_session_id: string }
         Returns: Json
       }
+      submit_report: {
+        Args: {
+          p_category: string
+          p_context_url?: string
+          p_reason: string
+          p_target: string
+        }
+        Returns: Json
+      }
+      toggle_block: { Args: { p_target: string }; Returns: Json }
       toggle_follow: { Args: { p_target: string }; Returns: Json }
       toggle_profile_like: { Args: { p_target: string }; Returns: Json }
     }
