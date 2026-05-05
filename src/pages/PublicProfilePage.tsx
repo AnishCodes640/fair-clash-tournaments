@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ThemedAvatar } from "@/components/ThemedAvatar";
 import { ProgressBadge } from "@/components/ProgressBadge";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { UserActionsMenu } from "@/components/UserActionsMenu";
 
 const PublicProfilePage = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -111,9 +112,12 @@ const PublicProfilePage = () => {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
-      <button onClick={() => navigate(-1)} className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> Back
-      </button>
+      <div className="flex items-center justify-between">
+        <button onClick={() => navigate(-1)} className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground">
+          <ArrowLeft className="h-3 w-3" /> Back
+        </button>
+        {!isSelf && userId && <UserActionsMenu targetUserId={userId} targetName={profile.username} contextUrl={`/u/${userId}`} />}
+      </div>
 
       <div className={cn("surface-card rounded-2xl p-6 flex flex-col items-center text-center",
         profile.is_admin && "border-red-500/30")}>
