@@ -2,7 +2,7 @@ import {
   Users, Gamepad2, Trophy, Wallet, AlertTriangle,
   TrendingUp, Ban, CreditCard, Settings, Bell,
   Shield, Upload, Plus, Search, Eye, Check, X,
-  FileText, ChevronRight, Image, Trash2, Clock, QrCode
+  FileText, ChevronRight, Image, Trash2, Clock, QrCode, Flag
 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/contexts/AuthContext";
