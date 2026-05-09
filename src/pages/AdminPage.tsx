@@ -278,6 +278,7 @@ const AdminPage = () => {
   const adminTabs: { id: AdminTab; label: string; icon: typeof Users; badge?: number }[] = [
     { id: "dashboard", label: "Home", icon: TrendingUp },
     { id: "users", label: "Users", icon: Users },
+    { id: "reports", label: "Reports", icon: Flag, badge: stats.openReports },
     { id: "payments", label: "Deposits", icon: CreditCard, badge: stats.pendingDeposits },
     { id: "withdrawals", label: "Withdraw", icon: Wallet, badge: stats.pendingWithdrawals },
     { id: "games", label: "Games", icon: Gamepad2 },
