@@ -18,7 +18,7 @@ const AdminPage = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
-  const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, bannedUsers: 0, totalGames: 0, tournaments: 0, pendingDeposits: 0, pendingWithdrawals: 0, earnings: 0, totalWallet: 0 });
+  const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, bannedUsers: 0, totalGames: 0, tournaments: 0, pendingDeposits: 0, pendingWithdrawals: 0, openReports: 0, earnings: 0, totalWallet: 0 });
   const [users, setUsers] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
