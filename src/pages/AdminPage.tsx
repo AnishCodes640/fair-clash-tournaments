@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
-type AdminTab = "dashboard" | "users" | "payments" | "withdrawals" | "games" | "tournaments" | "notices" | "settings";
+type AdminTab = "dashboard" | "users" | "reports" | "payments" | "withdrawals" | "games" | "tournaments" | "notices" | "settings";
 
 const AdminPage = () => {
   const { isAdmin } = useAuth();
@@ -25,6 +25,7 @@ const AdminPage = () => {
   const [games, setGames] = useState<any[]>([]);
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showGameForm, setShowGameForm] = useState(false);
   const [showTournamentForm, setShowTournamentForm] = useState(false);
@@ -64,12 +65,13 @@ const AdminPage = () => {
   const [features, setFeatures] = useState<any>({});
 
   const loadDashboard = async () => {
-    const [profilesRes, gamesRes, tournamentsRes, paymentsRes, withdrawalsRes, earningsRes] = await Promise.all([
+    const [profilesRes, gamesRes, tournamentsRes, paymentsRes, withdrawalsRes, reportsRes, earningsRes] = await Promise.all([
       supabase.from("profiles").select("*"),
       supabase.from("games").select("*"),
       supabase.from("tournaments").select("*"),
       supabase.from("payment_requests").select("*").eq("status", "pending"),
       supabase.from("withdrawal_requests").select("*").eq("status", "pending"),
+      supabase.from("user_reports").select("*").eq("status", "open"),
       supabase.from("wallet_transactions").select("fee").not("fee", "is", null),
     ]);
     const profiles = profilesRes.data || [];
@@ -84,6 +86,7 @@ const AdminPage = () => {
       pendingWithdrawals: (withdrawalsRes.data || []).length,
       earnings: totalEarnings,
       totalWallet: profiles.reduce((sum: number, p: any) => sum + Number(p.wallet_balance || 0), 0),
+      openReports: (reportsRes.data || []).length,
     });
     setUsers(profiles);
     setGames(gamesRes.data || []);
