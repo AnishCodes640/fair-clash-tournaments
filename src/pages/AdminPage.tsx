@@ -155,6 +155,21 @@ const AdminPage = () => {
     loadDashboard();
   };
 
+  const handleReportAction = async (report: any, status: "resolved" | "dismissed" | "escalated", banAction?: "ban" | "unban") => {
+    const note = prompt("Admin note (optional):") || null;
+    const { data, error } = await supabase.rpc("resolve_report", { p_id: report.id, p_status: status, p_note: note });
+    const res = data as any;
+    if (error || !res?.success) {
+      toast.error(res?.error || error?.message || "Could not update report");
+      return;
+    }
+    if (banAction) {
+      await supabase.from("profiles").update({ status: banAction === "ban" ? "banned" : "active" }).eq("user_id", report.reported_id);
+    }
+    toast.success(banAction === "ban" ? "Report resolved and user banned" : banAction === "unban" ? "Report dismissed and user unbanned" : `Report ${status}`);
+    loadReports(); loadDashboard();
+  };
+
   const handleWalletAdjust = async (userId: string, amount: number) => {
     const input = prompt(`Enter amount to ${amount > 0 ? "add" : "deduct"}:`);
     if (!input) return;
@@ -272,6 +287,7 @@ const AdminPage = () => {
   ];
 
   const filteredUsers = users.filter((u) => u.username?.toLowerCase().includes(searchQuery.toLowerCase()) || u.email?.toLowerCase().includes(searchQuery.toLowerCase()));
+  const userLabel = (userId: string) => users.find((u) => u.user_id === userId)?.username || `${userId.slice(0, 8)}...`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
