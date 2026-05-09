@@ -2,7 +2,7 @@ import {
   Users, Gamepad2, Trophy, Wallet, AlertTriangle,
   TrendingUp, Ban, CreditCard, Settings, Bell,
   Shield, Upload, Plus, Search, Eye, Check, X,
-  FileText, ChevronRight, Image, Trash2, Clock, QrCode
+  FileText, ChevronRight, Image, Trash2, Clock, QrCode, Flag
 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,19 +12,20 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
-type AdminTab = "dashboard" | "users" | "payments" | "withdrawals" | "games" | "tournaments" | "notices" | "settings";
+type AdminTab = "dashboard" | "users" | "reports" | "payments" | "withdrawals" | "games" | "tournaments" | "notices" | "settings";
 
 const AdminPage = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
-  const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, bannedUsers: 0, totalGames: 0, tournaments: 0, pendingDeposits: 0, pendingWithdrawals: 0, earnings: 0, totalWallet: 0 });
+  const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, bannedUsers: 0, totalGames: 0, tournaments: 0, pendingDeposits: 0, pendingWithdrawals: 0, openReports: 0, earnings: 0, totalWallet: 0 });
   const [users, setUsers] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [games, setGames] = useState<any[]>([]);
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showGameForm, setShowGameForm] = useState(false);
   const [showTournamentForm, setShowTournamentForm] = useState(false);
@@ -64,12 +65,13 @@ const AdminPage = () => {
   const [features, setFeatures] = useState<any>({});
 
   const loadDashboard = async () => {
-    const [profilesRes, gamesRes, tournamentsRes, paymentsRes, withdrawalsRes, earningsRes] = await Promise.all([
+    const [profilesRes, gamesRes, tournamentsRes, paymentsRes, withdrawalsRes, reportsRes, earningsRes] = await Promise.all([
       supabase.from("profiles").select("*"),
       supabase.from("games").select("*"),
       supabase.from("tournaments").select("*"),
       supabase.from("payment_requests").select("*").eq("status", "pending"),
       supabase.from("withdrawal_requests").select("*").eq("status", "pending"),
+      supabase.from("user_reports").select("*").eq("status", "open"),
       supabase.from("wallet_transactions").select("fee").not("fee", "is", null),
     ]);
     const profiles = profilesRes.data || [];
@@ -84,6 +86,7 @@ const AdminPage = () => {
       pendingWithdrawals: (withdrawalsRes.data || []).length,
       earnings: totalEarnings,
       totalWallet: profiles.reduce((sum: number, p: any) => sum + Number(p.wallet_balance || 0), 0),
+      openReports: (reportsRes.data || []).length,
     });
     setUsers(profiles);
     setGames(gamesRes.data || []);
@@ -110,12 +113,18 @@ const AdminPage = () => {
     setNotices(data || []);
   };
 
+  const loadReports = async () => {
+    const { data } = await supabase.from("user_reports").select("*").order("created_at", { ascending: false });
+    setReports(data || []);
+  };
+
   useEffect(() => {
     if (isAdmin) {
       loadDashboard();
       const channel = supabase.channel("admin-realtime")
         .on("postgres_changes", { event: "*", schema: "public", table: "payment_requests" }, () => { loadDashboard(); loadPayments(); })
         .on("postgres_changes", { event: "*", schema: "public", table: "withdrawal_requests" }, () => { loadDashboard(); loadWithdrawals(); })
+        .on("postgres_changes", { event: "*", schema: "public", table: "user_reports" }, () => { loadDashboard(); loadReports(); })
         .subscribe();
       return () => { supabase.removeChannel(channel); };
     }
@@ -125,6 +134,7 @@ const AdminPage = () => {
     if (activeTab === "payments") loadPayments();
     if (activeTab === "withdrawals") loadWithdrawals();
     if (activeTab === "notices") loadNotices();
+    if (activeTab === "reports") loadReports();
   }, [activeTab]);
 
   if (!isAdmin) {
@@ -143,6 +153,21 @@ const AdminPage = () => {
     await supabase.from("profiles").update({ status: ban ? "banned" : "active" }).eq("user_id", userId);
     toast.success(ban ? "User banned" : "User unbanned");
     loadDashboard();
+  };
+
+  const handleReportAction = async (report: any, status: "resolved" | "dismissed" | "escalated", banAction?: "ban" | "unban") => {
+    const note = prompt("Admin note (optional):") || null;
+    const { data, error } = await supabase.rpc("resolve_report", { p_id: report.id, p_status: status, p_note: note });
+    const res = data as any;
+    if (error || !res?.success) {
+      toast.error(res?.error || error?.message || "Could not update report");
+      return;
+    }
+    if (banAction) {
+      await supabase.from("profiles").update({ status: banAction === "ban" ? "banned" : "active" }).eq("user_id", report.reported_id);
+    }
+    toast.success(banAction === "ban" ? "Report resolved and user banned" : banAction === "unban" ? "Report dismissed and user unbanned" : `Report ${status}`);
+    loadReports(); loadDashboard();
   };
 
   const handleWalletAdjust = async (userId: string, amount: number) => {
@@ -253,6 +278,7 @@ const AdminPage = () => {
   const adminTabs: { id: AdminTab; label: string; icon: typeof Users; badge?: number }[] = [
     { id: "dashboard", label: "Home", icon: TrendingUp },
     { id: "users", label: "Users", icon: Users },
+    { id: "reports", label: "Reports", icon: Flag, badge: stats.openReports },
     { id: "payments", label: "Deposits", icon: CreditCard, badge: stats.pendingDeposits },
     { id: "withdrawals", label: "Withdraw", icon: Wallet, badge: stats.pendingWithdrawals },
     { id: "games", label: "Games", icon: Gamepad2 },
@@ -262,6 +288,7 @@ const AdminPage = () => {
   ];
 
   const filteredUsers = users.filter((u) => u.username?.toLowerCase().includes(searchQuery.toLowerCase()) || u.email?.toLowerCase().includes(searchQuery.toLowerCase()));
+  const userLabel = (userId: string) => users.find((u) => u.user_id === userId)?.username || `${userId.slice(0, 8)}...`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
@@ -338,6 +365,48 @@ const AdminPage = () => {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* REPORTS */}
+      {activeTab === "reports" && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard icon={Flag} label="Open Reports" value={String(reports.filter((r) => r.status === "open").length)} />
+            <StatCard icon={Ban} label="Banned Users" value={String(stats.bannedUsers)} />
+          </div>
+          {reports.length === 0 ? (
+            <div className="surface-card rounded-lg p-8 text-center text-sm text-muted-foreground">No user reports</div>
+          ) : reports.map((report) => {
+            const reported = users.find((u) => u.user_id === report.reported_id);
+            return (
+              <div key={report.id} className="surface-card rounded-lg p-4 space-y-3 border-l-2 border-l-destructive">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold">@{userLabel(report.reported_id)}</p>
+                      <span className="px-2 py-0.5 rounded-md bg-destructive/10 text-destructive text-[10px] font-bold uppercase">{report.category}</span>
+                      <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium", report.status === "open" ? "bg-warning/10 text-warning" : report.status === "resolved" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground")}>{report.status}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Reporter: @{userLabel(report.reporter_id)} · {new Date(report.created_at).toLocaleString()}</p>
+                  </div>
+                  <button onClick={() => navigate(`/u/${report.reported_id}`)} className="h-8 px-3 rounded-md bg-secondary text-xs font-medium flex items-center gap-1 hover:bg-accent transition-colors"><Eye className="h-3 w-3" /> Profile</button>
+                </div>
+                <p className="text-sm bg-secondary rounded-lg p-3 leading-relaxed">{report.reason}</p>
+                {report.context_url && <p className="text-xs text-muted-foreground break-all">Context: {report.context_url}</p>}
+                {reported && <p className="text-xs text-muted-foreground">Current status: <span className={cn("font-semibold", reported.status === "banned" ? "text-destructive" : "text-success")}>{reported.status}</span></p>}
+                {report.status === "open" && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button onClick={() => handleReportAction(report, "resolved", "ban")} className="h-9 rounded-md bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center gap-1"><Ban className="h-3 w-3" /> Ban & Resolve</button>
+                    <button onClick={() => handleReportAction(report, "resolved")} className="h-9 rounded-md bg-success text-success-foreground text-xs font-bold flex items-center justify-center gap-1"><Check className="h-3 w-3" /> Resolve</button>
+                    <button onClick={() => handleReportAction(report, "dismissed", "unban")} className="h-9 rounded-md bg-secondary text-xs font-medium flex items-center justify-center gap-1"><X className="h-3 w-3" /> Dismiss</button>
+                    <button onClick={() => handleReportAction(report, "escalated")} className="h-9 rounded-md bg-warning text-warning-foreground text-xs font-bold flex items-center justify-center gap-1"><AlertTriangle className="h-3 w-3" /> Escalate</button>
+                  </div>
+                )}
+                {report.admin_note && <p className="text-xs text-muted-foreground">Admin note: {report.admin_note}</p>}
+              </div>
+            );
+          })}
         </div>
       )}
 
