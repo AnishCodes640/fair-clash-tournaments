@@ -113,12 +113,18 @@ const AdminPage = () => {
     setNotices(data || []);
   };
 
+  const loadReports = async () => {
+    const { data } = await supabase.from("user_reports").select("*").order("created_at", { ascending: false });
+    setReports(data || []);
+  };
+
   useEffect(() => {
     if (isAdmin) {
       loadDashboard();
       const channel = supabase.channel("admin-realtime")
         .on("postgres_changes", { event: "*", schema: "public", table: "payment_requests" }, () => { loadDashboard(); loadPayments(); })
         .on("postgres_changes", { event: "*", schema: "public", table: "withdrawal_requests" }, () => { loadDashboard(); loadWithdrawals(); })
+        .on("postgres_changes", { event: "*", schema: "public", table: "user_reports" }, () => { loadDashboard(); loadReports(); })
         .subscribe();
       return () => { supabase.removeChannel(channel); };
     }
@@ -128,6 +134,7 @@ const AdminPage = () => {
     if (activeTab === "payments") loadPayments();
     if (activeTab === "withdrawals") loadWithdrawals();
     if (activeTab === "notices") loadNotices();
+    if (activeTab === "reports") loadReports();
   }, [activeTab]);
 
   if (!isAdmin) {
