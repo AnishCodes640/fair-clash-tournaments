@@ -368,6 +368,48 @@ const AdminPage = () => {
         </div>
       )}
 
+      {/* REPORTS */}
+      {activeTab === "reports" && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard icon={Flag} label="Open Reports" value={String(reports.filter((r) => r.status === "open").length)} />
+            <StatCard icon={Ban} label="Banned Users" value={String(stats.bannedUsers)} />
+          </div>
+          {reports.length === 0 ? (
+            <div className="surface-card rounded-lg p-8 text-center text-sm text-muted-foreground">No user reports</div>
+          ) : reports.map((report) => {
+            const reported = users.find((u) => u.user_id === report.reported_id);
+            return (
+              <div key={report.id} className="surface-card rounded-lg p-4 space-y-3 border-l-2 border-l-destructive">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold">@{userLabel(report.reported_id)}</p>
+                      <span className="px-2 py-0.5 rounded-md bg-destructive/10 text-destructive text-[10px] font-bold uppercase">{report.category}</span>
+                      <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium", report.status === "open" ? "bg-warning/10 text-warning" : report.status === "resolved" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground")}>{report.status}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Reporter: @{userLabel(report.reporter_id)} · {new Date(report.created_at).toLocaleString()}</p>
+                  </div>
+                  <button onClick={() => navigate(`/u/${report.reported_id}`)} className="h-8 px-3 rounded-md bg-secondary text-xs font-medium flex items-center gap-1 hover:bg-accent transition-colors"><Eye className="h-3 w-3" /> Profile</button>
+                </div>
+                <p className="text-sm bg-secondary rounded-lg p-3 leading-relaxed">{report.reason}</p>
+                {report.context_url && <p className="text-xs text-muted-foreground break-all">Context: {report.context_url}</p>}
+                {reported && <p className="text-xs text-muted-foreground">Current status: <span className={cn("font-semibold", reported.status === "banned" ? "text-destructive" : "text-success")}>{reported.status}</span></p>}
+                {report.status === "open" && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button onClick={() => handleReportAction(report, "resolved", "ban")} className="h-9 rounded-md bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center gap-1"><Ban className="h-3 w-3" /> Ban & Resolve</button>
+                    <button onClick={() => handleReportAction(report, "resolved")} className="h-9 rounded-md bg-success text-success-foreground text-xs font-bold flex items-center justify-center gap-1"><Check className="h-3 w-3" /> Resolve</button>
+                    <button onClick={() => handleReportAction(report, "dismissed", "unban")} className="h-9 rounded-md bg-secondary text-xs font-medium flex items-center justify-center gap-1"><X className="h-3 w-3" /> Dismiss</button>
+                    <button onClick={() => handleReportAction(report, "escalated")} className="h-9 rounded-md bg-warning text-warning-foreground text-xs font-bold flex items-center justify-center gap-1"><AlertTriangle className="h-3 w-3" /> Escalate</button>
+                  </div>
+                )}
+                {report.admin_note && <p className="text-xs text-muted-foreground">Admin note: {report.admin_note}</p>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* PAYMENTS (Deposits) */}
       {activeTab === "payments" && (
         <div className="space-y-3">
