@@ -1,5 +1,6 @@
-const PrivacyPage = () => {
 import { SEO } from "@/components/SEO";
+
+const PrivacyPage = () => {
   return (
     <>
       <SEO title="Privacy Policy — FairClash Tournaments" description="How Fair Fun Studios collects, uses and protects your data on FairClash Tournaments." path="/privacy" />
