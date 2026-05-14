@@ -251,6 +251,7 @@ const LeaderboardPage = () => {
         </>
       )}
     </div>
+    </>
   );
 };
 
@@ -425,7 +426,6 @@ function StatBox({ icon: Icon, value, label, color }: { icon: any; value: string
       <p className={cn("text-xs font-bold font-mono-num", color)}>{value}</p>
       <p className="text-[9px] text-muted-foreground">{label}</p>
     </div>
-    </>
   );
 }
 
