@@ -1,0 +1,32 @@
+# FairClash Tournaments
+
+> A mobile esports platform by Fair Fun Studios where players compete in skill-based games, join tournaments, win real cash prizes, and withdraw via UPI.
+
+FairClash hosts a library of casual and competitive games (Aviator Crash, Ludo, Snake, Sudoku, Memory, Tic Tac Toe, Doodle Jump, Quiz, Sports Prediction). Players deposit via UPI (min ₹50), play tournaments and head-to-head matches, and withdraw winnings (min ₹100, 40% platform commission). The platform includes social features (follow, chat, leaderboards) and an in-app AI assistant.
+
+## Pages
+
+- [Home](/): Featured tournaments, banners, and quick access to games.
+- [Games](/games): Full library of games available on the platform.
+- [Tournaments](/tournaments): Upcoming, live, and completed tournaments with entry fees and prize pools.
+- [Leaderboard](/leaderboard): Global, weekly, and monthly rankings with podium for top 3.
+- [Store](/store): Purchasable themes and cosmetics.
+- [Social](/social): Friend feed, follows, and activity stream.
+- [Rules](/rules): Gameplay, deposit, withdrawal, and fair-play rules.
+- [Privacy](/privacy): Privacy policy and data handling.
+
+## Games
+
+- [Aviator Crash](/aviator): Place a bet, cash out before the multiplier crashes.
+- [Ludo](/ludo): Multiplayer board game with matchmaking.
+- [Snake](/snake): Classic snake arcade.
+- [Sudoku](/sudoku): Number puzzle.
+- [Memory](/memory): Card matching memory game.
+- [Tic Tac Toe](/tic-tac-toe): Two-player classic.
+- [Doodle Jump](/doodle-jump): Vertical platformer.
+- [Quiz](/quiz): Trivia game.
+- [Sports Prediction](/sports): Predict outcomes of real sports events.
+
+## Optional
+
+- [Search](/search): Find users by username.
