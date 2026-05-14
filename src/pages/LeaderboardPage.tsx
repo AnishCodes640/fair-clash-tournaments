@@ -9,6 +9,7 @@ import { ProgressBadge } from "@/components/ProgressBadge";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { LeaderboardSkeleton } from "@/components/LeaderboardSkeleton";
 import { getTheme } from "@/lib/themes";
+import { SEO } from "@/components/SEO";
 
 type RankingType = "balance" | "wins" | "games" | "total_bets" | "total_winnings";
 type Period = "global" | "weekly" | "monthly";
@@ -169,7 +170,9 @@ const LeaderboardPage = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 animate-fade-in pb-24">
+    <>
+      <SEO title="Leaderboard — Top Players on FairClash" description="See the top players on FairClash with global, weekly and monthly rankings, podium positions, win streaks and XP tiers." path="/leaderboard" />
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 animate-fade-in pb-24">
       <div className="flex items-center gap-2">
         <Crown className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-bold tracking-tight">Leaderboard</h1>
@@ -248,6 +251,7 @@ const LeaderboardPage = () => {
         </>
       )}
     </div>
+    </>
   );
 };
 

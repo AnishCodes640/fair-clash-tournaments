@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Users, MessageCircle, Search, Rss, Trophy, Gamepad2 } from "lucide-react";
 import { ThemedAvatar } from "@/components/ThemedAvatar";
 import { cn } from "@/lib/utils";
+import { SEO } from "@/components/SEO";
 
 interface Conv {
   user_id: string;
@@ -123,6 +124,8 @@ const SocialPage = () => {
   }
 
   return (
+    <>
+      <SEO title="Social Feed — FairClash Friends & Activity" description="Follow other players, view your friend activity feed and stay up-to-date with wins and tier advancements on FairClash." path="/social" />
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -222,6 +225,7 @@ const SocialPage = () => {
       {tab === "following" && <UserList users={following} emptyText="You're not following anyone yet." />}
       {tab === "followers" && <UserList users={followers} emptyText="No followers yet." />}
     </div>
+    </>
   );
 };
 

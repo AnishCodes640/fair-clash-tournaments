@@ -7,6 +7,7 @@ import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { ShoppingCart, Sparkles, BadgeCheck, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SEO } from "@/components/SEO";
 
 const StorePage = () => {
   const { user, profile, refreshProfile } = useAuth();
@@ -71,7 +72,9 @@ const StorePage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
+    <>
+      <SEO title="Store — Themes & Cosmetics — FairClash" description="Buy premium themes and cosmetic upgrades for your FairClash profile using your wallet balance." path="/store" />
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
       <div className="flex items-center gap-2">
         <ShoppingCart className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-bold tracking-tight">Store</h1>
@@ -168,6 +171,7 @@ const StorePage = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

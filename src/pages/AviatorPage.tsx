@@ -8,6 +8,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import aviatorLogo from "@/assets/aviator-logo.jpg";
 import { playSound as playSfx, setSoundEnabled, isSoundEnabled } from "@/lib/soundManager";
+import { SEO } from "@/components/SEO";
 
 type GamePhase = "waiting" | "flying" | "crashed" | "cashed_out";
 
@@ -244,6 +245,8 @@ const AviatorPage = () => {
   const canCashout = phase === "flying" && currentBet > 0;
 
   return (
+    <>
+      <SEO title="Aviator Crash Game — Bet, Cash Out, Win — FairClash" description="Play Aviator on FairClash. Place a bet, watch the multiplier rise and cash out before the plane crashes to win real cash." path="/aviator" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Aviator Crash","url":"https://fair-clash-beta.lovable.app/aviator","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
     <div className="max-w-2xl mx-auto px-4 py-4 space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -384,6 +387,7 @@ const AviatorPage = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

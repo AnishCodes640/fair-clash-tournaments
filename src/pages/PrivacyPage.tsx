@@ -1,6 +1,10 @@
+import { SEO } from "@/components/SEO";
+
 const PrivacyPage = () => {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-8 animate-fade-in">
+    <>
+      <SEO title="Privacy Policy — FairClash Tournaments" description="How Fair Fun Studios collects, uses and protects your data on FairClash Tournaments." path="/privacy" />
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-8 animate-fade-in">
       <h1 className="text-2xl font-bold tracking-tight">Privacy Policy</h1>
       <p className="text-sm text-muted-foreground">Fair Fun Studios Gaming Platform — Effective Date: 2026</p>
 
@@ -75,6 +79,7 @@ const PrivacyPage = () => {
         </section>
       </div>
     </div>
+    </>
   );
 };
 

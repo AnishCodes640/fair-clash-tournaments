@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import ludoClashLogo from "@/assets/ludo-clash-logo.jpg";
 import ludoBoard from "@/assets/ludo-board.jpg";
 import { playSound as playSfx } from "@/lib/soundManager";
+import { SEO } from "@/components/SEO";
 
 type Screen = "lobby" | "matchmaking" | "game" | "result";
 
@@ -516,6 +517,8 @@ const LudoPage = () => {
   const DiceIcon = diceValue ? DICE_ICONS[diceValue - 1] : Dice1;
 
   return (
+    <>
+      <SEO title="Ludo Cash Tournaments — FairClash" description="Play multiplayer Ludo for real cash on FairClash. Quick matchmaking, fair dice, instant winnings." path="/ludo" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Ludo","url":"https://fair-clash-beta.lovable.app/ludo","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
     <div className="max-w-2xl mx-auto px-2 py-3 space-y-3 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between px-2">
@@ -603,6 +606,7 @@ const LudoPage = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

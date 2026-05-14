@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Trophy, Clock, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SEO } from "@/components/SEO";
 
 type Match = any;
 
@@ -51,7 +52,9 @@ const SportsPredictionPage = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
+    <>
+      <SEO title="Sports Prediction — Predict & Win — FairClash" description="Predict outcomes of real sports events on FairClash and win cash rewards for accurate calls." path="/sports" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Sports Prediction","url":"https://fair-clash-beta.lovable.app/sports","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center gap-2">
         <Trophy className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-bold tracking-tight">Sports Predictions</h1>
@@ -114,6 +117,7 @@ const SportsPredictionPage = () => {
         );
       })}
     </div>
+    </>
   );
 };
 

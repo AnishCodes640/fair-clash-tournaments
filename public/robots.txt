@@ -12,3 +12,11 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /auth
+Disallow: /wallet
+Disallow: /mailbox
+Disallow: /settings
+Disallow: /chat/
+
+Sitemap: https://fair-clash-beta.lovable.app/sitemap.xml

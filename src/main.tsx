@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import "./index.css";
 
@@ -12,7 +13,11 @@ const showBootError = (error: unknown) => {
 
 try {
   if (!root) throw new Error("Root element not found");
-  createRoot(root).render(<App />);
+  createRoot(root).render(
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
+  );
 } catch (error) {
   console.error("[Startup]", error);
   showBootError(error);

@@ -1,4 +1,5 @@
 import { BookOpen, Wallet, Trophy, Shield, Mail, Percent, Gamepad2 } from "lucide-react";
+import { SEO } from "@/components/SEO";
 
 const RulesPage = () => {
   const sections = [
@@ -55,7 +56,9 @@ const RulesPage = () => {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
+    <>
+      <SEO title="Rules & How It Works — FairClash" description="Read the official rules of FairClash: gameplay, deposits, withdrawals, tournament entry, fair-play and platform commission." path="/rules" />
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
       <div className="flex items-center gap-2">
         <BookOpen className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-bold tracking-tight">Rules & Info</h1>
@@ -78,6 +81,7 @@ const RulesPage = () => {
         </div>
       ))}
     </div>
+    </>
   );
 };
 
