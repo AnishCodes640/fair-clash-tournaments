@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { SEO } from "@/components/SEO";
 
 type Tab = "upcoming" | "live" | "completed";
 
@@ -54,7 +55,9 @@ const TournamentsPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
+    <>
+      <SEO title="Live & Upcoming Tournaments — FairClash" description="Join cash tournaments on FairClash. View entry fees, prize pools, and live brackets for upcoming, live and completed events." path="/tournaments" />
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
       <h1 className="text-xl font-bold tracking-tight">Tournaments</h1>
 
       <div className="flex gap-1 bg-secondary rounded-lg p-1">
@@ -117,6 +120,7 @@ const TournamentsPage = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

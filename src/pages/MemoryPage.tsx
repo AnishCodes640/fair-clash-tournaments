@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { playSound } from "@/lib/soundManager";
 import memoryLogo from "@/assets/memory-logo.jpg";
+import { SEO } from "@/components/SEO";
 
 type Difficulty = "easy" | "normal" | "hard";
 type GameMode = "solo" | "local";
@@ -135,7 +136,9 @@ const MemoryPage = () => {
   const done = matched === cards.length / 2 && cards.length > 0;
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
+    <>
+      <SEO title="Memory Match — Card Matching Game — FairClash" description="Play Memory Match card game on FairClash. Solo or 2-player local mode with three difficulty levels." path="/memory" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Memory Match","url":"https://fair-clash-beta.lovable.app/memory","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
+      <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center gap-3">
         <Link to="/games" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></Link>
         <img src={memoryLogo} alt="Memory Match" className="h-10 w-10 rounded-xl object-cover" />
@@ -230,6 +233,7 @@ const MemoryPage = () => {
         </button>
       )}
     </div>
+    </>
   );
 };
 

@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Users, MessageCircle, Search, Rss, Trophy, Gamepad2 } from "lucide-react";
 import { ThemedAvatar } from "@/components/ThemedAvatar";
 import { cn } from "@/lib/utils";
+import { SEO } from "@/components/SEO";
 
 interface Conv {
   user_id: string;
@@ -114,7 +115,9 @@ const SocialPage = () => {
 
   if (!user) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12 text-center space-y-4">
+      <>
+        <SEO title="Social Feed — FairClash Friends & Activity" description="Follow other players, view your friend activity feed and stay up-to-date with wins and tier advancements on FairClash." path="/social" />
+        <div className="max-w-2xl mx-auto px-4 py-12 text-center space-y-4">
         <h1 className="text-xl font-bold">Social</h1>
         <p className="text-sm text-muted-foreground">Sign in to chat with friends and follow players.</p>
         <button onClick={() => navigate("/auth")} className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Sign in</button>
@@ -248,6 +251,7 @@ function UserList({ users, emptyText }: { users: any[]; emptyText: string }) {
         );
       })}
     </div>
+    </>
   );
 }
 

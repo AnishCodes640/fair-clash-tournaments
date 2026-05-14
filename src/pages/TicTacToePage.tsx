@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { playSound } from "@/lib/soundManager";
 import ticTacToeLogo from "@/assets/tic-tac-toe-logo.jpg";
+import { SEO } from "@/components/SEO";
 
 type Cell = "X" | "O" | null;
 type Difficulty = "easy" | "normal" | "hard";
@@ -146,7 +147,9 @@ const TicTacToePage = () => {
   const p2Label = gameMode === "local" ? "P2 (O)" : "AI (O)";
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6 space-y-6 animate-fade-in">
+    <>
+      <SEO title="Tic Tac Toe — Play vs AI or 2 Players — FairClash" description="Play Tic Tac Toe online on FairClash. Versus AI or local 2-player mode, completely free." path="/tic-tac-toe" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Tic Tac Toe","url":"https://fair-clash-beta.lovable.app/tic-tac-toe","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
+      <div className="max-w-md mx-auto px-4 py-6 space-y-6 animate-fade-in">
       <div className="flex items-center gap-3">
         <Link to="/games" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
@@ -251,6 +254,7 @@ const TicTacToePage = () => {
         </button>
       )}
     </div>
+    </>
   );
 };
 

@@ -14,6 +14,7 @@ import sudokuLogo from "@/assets/sudoku-logo.png";
 import doodleJumpLogo from "@/assets/doodle-jump-logo.jpg";
 import { cn } from "@/lib/utils";
 import { BannerCarousel } from "@/components/BannerCarousel";
+import { SEO } from "@/components/SEO";
 
 const BUILT_IN_GAMES = [
   { to: "/tic-tac-toe", logo: ticTacToeLogo, name: "Tic Tac Toe", desc: "AI or 2P · Free" },
@@ -63,7 +64,9 @@ const HomePage = () => {
   }, [user]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-8 animate-fade-in">
+    <>
+      <SEO title="FairClash Tournaments — Compete in Mobile Esports & Win Real Cash" description="Join FairClash mobile esports. Play Aviator, Ludo, Snake, Sudoku & more. Enter tournaments, win real cash prizes, withdraw via UPI." path="/" />
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-8 animate-fade-in">
       {/* Hero */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-card to-primary/5 border border-border p-6">
         <div className="flex items-center gap-4">
@@ -235,6 +238,7 @@ const HomePage = () => {
         </section>
       )}
     </div>
+    </>
   );
 };
 

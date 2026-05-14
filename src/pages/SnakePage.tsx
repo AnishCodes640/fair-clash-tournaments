@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import snakeLogo from "@/assets/snake-logo.jpg";
+import { SEO } from "@/components/SEO";
 
 const GRID = 20;
 const CELL_SIZE = 100 / GRID;
@@ -121,7 +122,9 @@ const SnakePage = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
+    <>
+      <SEO title="Snake — Classic Arcade Game — FairClash" description="Play the classic Snake arcade game online on FairClash. Three difficulty levels and high-score tracking." path="/snake" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Snake","url":"https://fair-clash-beta.lovable.app/snake","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
+      <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center gap-3">
         <Link to="/games" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></Link>
         <img src={snakeLogo} alt="Snake" className="h-10 w-10 rounded-xl object-cover" />
@@ -229,6 +232,7 @@ const SnakePage = () => {
       </div>
       <p className="text-[10px] text-center text-muted-foreground">Swipe on the board or use buttons to control</p>
     </div>
+    </>
   );
 };
 

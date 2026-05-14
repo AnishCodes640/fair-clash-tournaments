@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import sudokuLogo from "@/assets/sudoku-logo.png";
+import { SEO } from "@/components/SEO";
 
 type Difficulty = "easy" | "medium" | "hard";
 const REMOVE_MAP: Record<Difficulty, number> = { easy: 30, medium: 40, hard: 50 };
@@ -108,7 +109,9 @@ const SudokuPage = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
+    <>
+      <SEO title="Sudoku — Free Number Puzzle — FairClash" description="Play free Sudoku puzzles online on FairClash. Easy, medium and hard difficulties with hints and undo." path="/sudoku" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Sudoku","url":"https://fair-clash-beta.lovable.app/sudoku","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
+      <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center gap-3">
         <Link to="/games" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></Link>
         <img src={sudokuLogo} alt="Sudoku" className="h-10 w-10 rounded-xl object-cover" />
@@ -181,6 +184,7 @@ const SudokuPage = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

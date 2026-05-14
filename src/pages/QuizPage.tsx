@@ -5,6 +5,7 @@ import { pickQuizQuestions, QuizQuestion } from "@/lib/quizBank";
 import { Brain, Loader2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SEO } from "@/components/SEO";
 
 const QuizPage = () => {
   const { user, refreshProfile } = useAuth();
@@ -56,7 +57,9 @@ const QuizPage = () => {
 
   if (!sessionId || final) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
+      <>
+        <SEO title="Quiz — Trivia Challenge — FairClash" description="Play trivia quizzes on FairClash. Test your knowledge across multiple categories and climb the leaderboard." path="/quiz" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Quiz","url":"https://fair-clash-beta.lovable.app/quiz","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
+        <div className="max-w-xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
         <div className="flex items-center gap-2">
           <Brain className="h-5 w-5 text-primary" />
           <h1 className="text-xl font-bold tracking-tight">Quiz Game</h1>
@@ -111,6 +114,7 @@ const QuizPage = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

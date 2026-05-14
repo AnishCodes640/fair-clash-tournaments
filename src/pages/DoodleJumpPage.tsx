@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import doodleJumpLogo from "@/assets/doodle-jump-logo.jpg";
 import doodleCharacter from "@/assets/doodle-character.png";
 import { playSound } from "@/lib/soundManager";
+import { SEO } from "@/components/SEO";
 
 const DoodleJumpPage = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -255,7 +256,9 @@ const DoodleJumpPage = () => {
   }, [started, gameOver]);
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
+    <>
+      <SEO title="Doodle Jump — Vertical Platformer — FairClash" description="Play Doodle Jump on FairClash. Jump higher and higher in this addictive free arcade platformer." path="/doodle-jump" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Doodle Jump","url":"https://fair-clash-beta.lovable.app/doodle-jump","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
+      <div className="max-w-md mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center gap-3">
         <Link to="/games" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /></Link>
         <img src={doodleJumpLogo} alt="Doodle Jump" className="h-10 w-10 rounded-xl object-cover" />
@@ -332,6 +335,7 @@ const DoodleJumpPage = () => {
         <p>Arrow keys / tilt to move · Tap buttons on mobile</p>
       </div>
     </div>
+    </>
   );
 };
 

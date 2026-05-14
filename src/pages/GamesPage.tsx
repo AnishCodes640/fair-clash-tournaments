@@ -10,6 +10,7 @@ import sudokuLogo from "@/assets/sudoku-logo.png";
 import memoryLogo from "@/assets/memory-logo.jpg";
 import doodleJumpLogo from "@/assets/doodle-jump-logo.jpg";
 import { cn } from "@/lib/utils";
+import { SEO } from "@/components/SEO";
 
 const GamesPage = () => {
   const [games, setGames] = useState<any[]>([]);
@@ -40,7 +41,9 @@ const GamesPage = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
+    <>
+      <SEO title="All Games — FairClash Tournaments" description="Browse the full library of skill-based games on FairClash. Aviator, Ludo, Snake, Sudoku, Memory, Tic Tac Toe, Quiz and more." path="/games" />
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight">Games</h1>
         <span className="text-xs text-muted-foreground font-mono-num">{totalGames} games</span>
@@ -139,6 +142,7 @@ const GamesPage = () => {
         </>
       )}
     </div>
+    </>
   );
 };
 
