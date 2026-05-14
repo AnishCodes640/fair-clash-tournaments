@@ -115,9 +115,7 @@ const SocialPage = () => {
 
   if (!user) {
     return (
-      <>
-        <SEO title="Social Feed — FairClash Friends & Activity" description="Follow other players, view your friend activity feed and stay up-to-date with wins and tier advancements on FairClash." path="/social" />
-        <div className="max-w-2xl mx-auto px-4 py-12 text-center space-y-4">
+      <div className="max-w-2xl mx-auto px-4 py-12 text-center space-y-4">
         <h1 className="text-xl font-bold">Social</h1>
         <p className="text-sm text-muted-foreground">Sign in to chat with friends and follow players.</p>
         <button onClick={() => navigate("/auth")} className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Sign in</button>
@@ -126,6 +124,8 @@ const SocialPage = () => {
   }
 
   return (
+    <>
+      <SEO title="Social Feed — FairClash Friends & Activity" description="Follow other players, view your friend activity feed and stay up-to-date with wins and tier advancements on FairClash." path="/social" />
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -225,6 +225,7 @@ const SocialPage = () => {
       {tab === "following" && <UserList users={following} emptyText="You're not following anyone yet." />}
       {tab === "followers" && <UserList users={followers} emptyText="No followers yet." />}
     </div>
+    </>
   );
 };
 
@@ -251,7 +252,6 @@ function UserList({ users, emptyText }: { users: any[]; emptyText: string }) {
         );
       })}
     </div>
-    </>
   );
 }
 

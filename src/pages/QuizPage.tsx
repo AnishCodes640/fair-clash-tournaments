@@ -57,9 +57,7 @@ const QuizPage = () => {
 
   if (!sessionId || final) {
     return (
-      <>
-        <SEO title="Quiz — Trivia Challenge — FairClash" description="Play trivia quizzes on FairClash. Test your knowledge across multiple categories and climb the leaderboard." path="/quiz" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Quiz","url":"https://fair-clash-beta.lovable.app/quiz","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
-        <div className="max-w-xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
+      <div className="max-w-xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
         <div className="flex items-center gap-2">
           <Brain className="h-5 w-5 text-primary" />
           <h1 className="text-xl font-bold tracking-tight">Quiz Game</h1>
@@ -88,6 +86,8 @@ const QuizPage = () => {
   const showResult = answered.length > idx;
 
   return (
+    <>
+      <SEO title="Quiz — Trivia Challenge — FairClash" description="Play trivia quizzes on FairClash. Test your knowledge across multiple categories and climb the leaderboard." path="/quiz" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Quiz","url":"https://fair-clash-beta.lovable.app/quiz","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
     <div className="max-w-xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-muted-foreground">Question {idx + 1} / {questions.length}</p>
