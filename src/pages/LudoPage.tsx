@@ -403,9 +403,7 @@ const LudoPage = () => {
 
   if (!user) {
     return (
-      <>
-        <SEO title="Ludo Cash Tournaments — FairClash" description="Play multiplayer Ludo for real cash on FairClash. Quick matchmaking, fair dice, instant winnings." path="/ludo" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Ludo","url":"https://fair-clash-beta.lovable.app/ludo","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
-        <div className="max-w-2xl mx-auto px-4 py-8 text-center animate-fade-in">
+      <div className="max-w-2xl mx-auto px-4 py-8 text-center animate-fade-in">
         <img src={ludoClashLogo} alt="Ludo Clash" className="h-20 w-20 rounded-2xl object-cover mx-auto mb-4" />
         <h2 className="text-lg font-bold mb-2">Ludo Clash</h2>
         <p className="text-sm text-muted-foreground mb-4">Sign in to play</p>
@@ -519,6 +517,8 @@ const LudoPage = () => {
   const DiceIcon = diceValue ? DICE_ICONS[diceValue - 1] : Dice1;
 
   return (
+    <>
+      <SEO title="Ludo Cash Tournaments — FairClash" description="Play multiplayer Ludo for real cash on FairClash. Quick matchmaking, fair dice, instant winnings." path="/ludo" jsonLd={{"@context":"https://schema.org","@type":"Game","name":"Ludo","url":"https://fair-clash-beta.lovable.app/ludo","provider":{"@type":"Organization","name":"Fair Fun Studios"},"genre":"Online Game"}} />
     <div className="max-w-2xl mx-auto px-2 py-3 space-y-3 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between px-2">
